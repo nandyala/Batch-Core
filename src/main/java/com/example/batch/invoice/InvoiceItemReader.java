@@ -2,7 +2,7 @@ package com.example.batch.invoice;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.infrastructure.item.ItemReader;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

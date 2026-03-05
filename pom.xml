@@ -12,39 +12,39 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>Spring Batch Framework</name>
-    <description>XML-based Spring Batch 5 framework — MSSQL, Java 21, no Spring Boot</description>
+    <description>XML-based Spring Batch 6 framework — MSSQL, Java 21, no Spring Boot</description>
 
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Core library versions -->
-        <spring.version>6.1.14</spring.version>
-        <spring.batch.version>5.1.2</spring.batch.version>
-        <mssql.version>12.6.3.jre11</mssql.version>
-        <hikari.version>5.1.0</hikari.version>
-        <angus.mail.version>2.0.3</angus.mail.version>
-        <logback.version>1.5.8</logback.version>
+        <spring.version>7.0.5</spring.version>
+        <spring.batch.version>6.0.2</spring.batch.version>
+        <mssql.version>13.2.1.jre11</mssql.version>
+        <hikari.version>7.0.2</hikari.version>
+        <angus.mail.version>2.0.5</angus.mail.version>
+        <logback.version>1.5.32</logback.version>
         <!--
             Logback 1.5.x requires SLF4J 2.x.
             HikariCP pulls in slf4j-api 1.7.x transitively, which uses the
             old StaticLoggerBinder mechanism (removed in SLF4J 2.x).
             Pinning 2.x here as a direct dependency wins over HikariCP's 1.7.x.
         -->
-        <slf4j.version>2.0.9</slf4j.version>
+        <slf4j.version>2.0.17</slf4j.version>
 
         <!-- Test -->
-        <junit.version>5.11.0</junit.version>
-        <h2.version>2.3.232</h2.version>
+        <junit.version>5.14.3</junit.version>
+        <h2.version>2.4.240</h2.version>
 
         <!-- Plugin versions -->
-        <maven.compiler.version>3.13.0</maven.compiler.version>
-        <maven.shade.version>3.5.2</maven.shade.version>
-        <maven.surefire.version>3.3.1</maven.surefire.version>
-        <jacoco.version>0.8.12</jacoco.version>
+        <maven.compiler.version>3.15.0</maven.compiler.version>
+        <maven.shade.version>3.6.2</maven.shade.version>
+        <maven.surefire.version>3.5.5</maven.surefire.version>
+        <jacoco.version>0.8.14</jacoco.version>
 
         <!-- Test library versions -->
-        <mockito.version>5.14.2</mockito.version>
+        <mockito.version>5.22.0</mockito.version>
     </properties>
 
     <!-- ============================================================

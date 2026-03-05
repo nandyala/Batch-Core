@@ -2,9 +2,9 @@ package com.example.batch.support;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersInvalidException;
-import org.springframework.batch.core.JobParametersValidator;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
+import org.springframework.batch.core.job.parameters.JobParametersValidator;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -63,12 +63,12 @@ public class BatchJobParameterValidator implements JobParametersValidator {
     // ---------------------------------------------------------------
 
     @Override
-    public void validate(JobParameters parameters) throws JobParametersInvalidException {
+    public void validate(JobParameters parameters) throws InvalidJobParametersException {
 
         // 1. Required parameter presence check
         for (String name : requiredParams) {
             if (parameters.getString(name) == null) {
-                throw new JobParametersInvalidException(
+                throw new InvalidJobParametersException(
                     "Missing required job parameter: '" + name + "'. "
                     + "Pass it on the command line: java -jar app.jar <job> " + name + "=<value>");
             }
@@ -81,7 +81,7 @@ public class BatchJobParameterValidator implements JobParametersValidator {
                 LocalDate parsed = LocalDate.parse(batchDate, DATE_FMT);
                 log.debug("Parameter batchDate validated: {}", parsed);
             } catch (DateTimeParseException e) {
-                throw new JobParametersInvalidException(
+                throw new InvalidJobParametersException(
                     "Invalid batchDate value '" + batchDate + "'. "
                     + "Expected format: yyyy-MM-dd (e.g. 2026-01-15)");
             }

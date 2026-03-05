@@ -44,11 +44,15 @@
          Step-scoped: fresh cursor per execution / restart.
          ================================================================ -->
     <bean id="customerReportReader"
-          class="org.springframework.batch.item.database.JdbcCursorItemReader"
+          class="org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader"
           scope="step">
+        <!--
+          SB6: no-arg constructor removed — dataSource, sql, rowMapper are now
+          required constructor arguments.
+        -->
         <!-- Read from secondaryDataSource (reporting DB) -->
-        <property name="dataSource" ref="secondaryDataSource"/>
-        <property name="sql">
+        <constructor-arg name="dataSource" ref="secondaryDataSource"/>
+        <constructor-arg name="sql">
             <value>
                 SELECT customer_id,
                        customer_name,
@@ -60,7 +64,10 @@
                 WHERE  report_date = CONVERT(date, ?, 23)
                 ORDER  BY region, customer_name
             </value>
-        </property>
+        </constructor-arg>
+        <constructor-arg name="rowMapper">
+            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
+        </constructor-arg>
         <!--
           Use ArgumentPreparedStatementSetter to bind batchDate as a proper JDBC
           parameter. This avoids direct SpEL interpolation into the SQL string,
@@ -76,9 +83,6 @@
                     </array>
                 </constructor-arg>
             </bean>
-        </property>
-        <property name="rowMapper">
-            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
         </property>
         <!-- Fetch rows in batches from the driver rather than one at a time -->
         <property name="fetchSize" value="${batch.dbtofile.commitInterval:100}"/>
@@ -97,30 +101,42 @@
          BeanWrapperFieldExtractor maps POJO fields → CSV columns.
          ================================================================ -->
     <bean id="customerReportWriter"
-          class="org.springframework.batch.item.file.FlatFileItemWriter"
+          class="org.springframework.batch.infrastructure.item.file.FlatFileItemWriter"
           scope="step">
+        <!--
+          SB6: no-arg constructor removed — lineAggregator is now a required
+          constructor argument. resource and other options remain as properties.
+          BeanWrapperFieldExtractor also lost its no-arg constructor — field
+          names are now passed via constructor-arg (varargs → <list>).
+        -->
+        <constructor-arg name="lineAggregator">
+            <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator">
+                <property name="delimiter" value=","/>
+                <property name="fieldExtractor">
+                    <bean class="org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor">
+                        <!-- Column order in the output CSV (varargs constructor-arg in SB6) -->
+                        <constructor-arg name="names">
+                            <list>
+                                <value>customerId</value>
+                                <value>customerName</value>
+                                <value>region</value>
+                                <value>totalOrders</value>
+                                <value>totalAmount</value>
+                                <value>reportDate</value>
+                            </list>
+                        </constructor-arg>
+                    </bean>
+                </property>
+            </bean>
+        </constructor-arg>
         <property name="resource"
                   value="file:${batch.dbtofile.outputDir}/customer-report-#{jobParameters['batchDate']}.csv"/>
         <!-- Overwrite existing file — safe because batchDate is unique per run -->
         <property name="shouldDeleteIfExists" value="true"/>
-
         <!-- CSV header written once before any items -->
         <property name="headerCallback">
             <bean class="com.example.batch.support.CsvHeaderCallback">
                 <constructor-arg value="customer_id,customer_name,region,total_orders,total_amount,report_date"/>
-            </bean>
-        </property>
-
-        <property name="lineAggregator">
-            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
-                <property name="delimiter" value=","/>
-                <property name="fieldExtractor">
-                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
-                        <!-- Column order in the output CSV -->
-                        <property name="names"
-                                  value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
-                    </bean>
-                </property>
             </bean>
         </property>
     </bean>

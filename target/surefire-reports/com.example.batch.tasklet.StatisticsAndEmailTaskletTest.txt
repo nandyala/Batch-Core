@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.example.batch.tasklet.StatisticsAndEmailTaskletTest
--------------------------------------------------------------------------------
-Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.262 s -- in com.example.batch.tasklet.StatisticsAndEmailTaskletTest

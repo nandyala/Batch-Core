@@ -2,8 +2,8 @@ package com.example.batch.filetodb;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.item.file.transform.DefaultFieldSet;
-import org.springframework.batch.item.file.transform.FieldSet;
+import org.springframework.batch.infrastructure.item.file.transform.DefaultFieldSet;
+import org.springframework.batch.infrastructure.item.file.transform.FieldSet;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

@@ -3,11 +3,11 @@ package com.example.batch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
 import org.springframework.batch.core.job.AbstractJob;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.context.support.GenericXmlApplicationContext;
@@ -126,9 +126,28 @@ public class SpringBatchApplication {
         try {
             return execute(cleaned, dryRun);
         } catch (Exception ex) {
-            log.error("Fatal startup error: {}", ex.getMessage(), ex);
+            // Log a concise single-line message at ERROR (visible in all environments).
+            // Full stack trace is demoted to DEBUG — enables -Dlogging.level...=DEBUG when
+            // diagnosing unexpected failures without polluting normal output with huge traces
+            // from expected user errors (e.g. wrong slug → XML not found).
+            log.error("Fatal startup error: {}", rootCauseMessage(ex));
+            log.debug("Fatal startup error details:", ex);
             return 2;
         }
+    }
+
+    /**
+     * Unwraps the exception chain to the deepest non-null message.
+     * For a {@code BeanDefinitionStoreException} wrapping a {@code FileNotFoundException}
+     * this returns the inner "cannot be opened because it does not exist" message,
+     * which is far more readable than the outer Spring wrapper message.
+     */
+    private static String rootCauseMessage(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause.getMessage() != null ? cause.getMessage() : ex.getMessage();
     }
 
     // ---------------------------------------------------------------
@@ -247,7 +266,7 @@ public class SpringBatchApplication {
         try {
             job.getJobParametersValidator().validate(params);
             log.info("  [PASS] JobParametersValidator — all checks passed");
-        } catch (JobParametersInvalidException ex) {
+        } catch (InvalidJobParametersException ex) {
             log.error("  [FAIL] JobParametersValidator — {}", ex.getMessage());
             issues.add("Parameter validation: " + ex.getMessage());
         }

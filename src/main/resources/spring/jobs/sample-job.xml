@@ -41,7 +41,7 @@
          Production replacement — JdbcCursorItemReader:
 
          <bean id="sampleReader"
-               class="org.springframework.batch.item.database.JdbcCursorItemReader"
+               class="org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader"
                scope="step">
            <property name="dataSource" ref="dataSource"/>
            <property name="sql"
@@ -70,7 +70,7 @@
          Production replacement — JdbcBatchItemWriter:
 
          <bean id="sampleWriter"
-               class="org.springframework.batch.item.database.JdbcBatchItemWriter"
+               class="org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter"
                scope="step">
            <property name="dataSource" ref="dataSource"/>
            <property name="sql">
@@ -80,7 +80,7 @@
              </value>
            </property>
            <property name="itemSqlParameterSourceProvider">
-             <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+             <bean class="org.springframework.batch.infrastructure.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
            </property>
          </bean>
          ================================================================ -->

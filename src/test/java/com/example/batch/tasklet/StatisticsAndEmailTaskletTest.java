@@ -10,14 +10,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.step.StepContribution;
+import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.scope.context.StepContext;
-import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,7 +60,7 @@ class StatisticsAndEmailTaskletTest {
         // Build a real job execution with one preceding business step
         JobInstance instance = new JobInstance(1L, "testJob");
         JobParameters params = new JobParameters();
-        jobExecution = new JobExecution(instance, 1L, params);
+        jobExecution = new JobExecution(1L, instance, params);
         jobExecution.setStatus(BatchStatus.STARTED);
         jobExecution.setStartTime(LocalDateTime.now());  // exercises toDate(non-null) path
 
@@ -217,7 +217,7 @@ class StatisticsAndEmailTaskletTest {
         // statsStep is the only step; it is excluded from aggregation → empty step list
         // Covers the stats.getStepStats().isEmpty() branch in printStatisticsToLog
         JobInstance inst2    = new JobInstance(2L, "emptyJob");
-        JobExecution jobExec2 = new JobExecution(inst2, 2L, new JobParameters());
+        JobExecution jobExec2 = new JobExecution(2L, inst2, new JobParameters());
         jobExec2.setStatus(BatchStatus.STARTED);
         jobExec2.setStartTime(LocalDateTime.now());
 

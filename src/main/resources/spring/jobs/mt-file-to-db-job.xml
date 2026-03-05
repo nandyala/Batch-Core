@@ -67,9 +67,9 @@
          below wraps it.
          ================================================================ -->
     <bean id="mtTransactionFileReader"
-          class="org.springframework.batch.item.file.FlatFileItemReader"
+          class="org.springframework.batch.infrastructure.item.file.FlatFileItemReader"
           scope="step">
-        <property name="resource"
+        <constructor-arg
                   value="file:#{jobParameters['inputFile'] ?: '${batch.filetodb.inputDir}/' + jobParameters['batchDate'] + '/transactions.csv'}"/>
         <property name="linesToSkip" value="1"/>
         <!--
@@ -77,10 +77,10 @@
           position is meaningless for restart — see class-level comment.
         -->
         <property name="saveState" value="false"/>
-        <property name="lineMapper">
-            <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+        <constructor-arg>
+            <bean class="org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper">
                 <property name="lineTokenizer">
-                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+                    <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer">
                         <property name="delimiter" value=","/>
                         <property name="names"
                                   value="transaction_id,account_number,amount,transaction_type,transaction_date,description"/>
@@ -90,7 +90,7 @@
                     <bean class="com.example.batch.filetodb.TransactionFieldSetMapper"/>
                 </property>
             </bean>
-        </property>
+        </constructor-arg>
     </bean>
 
     <!-- ================================================================
@@ -101,9 +101,9 @@
          Step-scoped to match the delegate's scope.
          ================================================================ -->
     <bean id="mtTransactionSyncReader"
-          class="org.springframework.batch.item.support.SynchronizedItemStreamReader"
+          class="org.springframework.batch.infrastructure.item.support.SynchronizedItemStreamReader"
           scope="step">
-        <property name="delegate" ref="mtTransactionFileReader"/>
+        <constructor-arg ref="mtTransactionFileReader"/>
     </bean>
 
     <!-- ================================================================
@@ -120,7 +120,7 @@
          The MERGE upsert on transaction_id ensures idempotent restarts.
          ================================================================ -->
     <bean id="mtTransactionWriter"
-          class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+          class="org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter">
         <property name="dataSource" ref="dataSource"/>
         <property name="sql">
             <value>
@@ -145,7 +145,7 @@
             </value>
         </property>
         <property name="itemSqlParameterSourceProvider">
-            <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+            <bean class="org.springframework.batch.infrastructure.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
         </property>
         <property name="assertUpdates" value="false"/>
     </bean>
@@ -188,7 +188,7 @@
                     <batch:skippable-exception-classes>
                         <batch:include class="java.lang.IllegalArgumentException"/>
                         <batch:include class="java.lang.IllegalStateException"/>
-                        <batch:include class="org.springframework.batch.item.file.FlatFileParseException"/>
+                        <batch:include class="org.springframework.batch.infrastructure.item.file.FlatFileParseException"/>
                         <batch:include class="org.springframework.dao.DataIntegrityViolationException"/>
                         <batch:include class="java.sql.SQLTransientException"/>
                         <batch:include class="org.springframework.dao.TransientDataAccessException"/>

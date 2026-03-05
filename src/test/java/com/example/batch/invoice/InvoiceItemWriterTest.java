@@ -2,7 +2,7 @@ package com.example.batch.invoice;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.item.Chunk;
+import org.springframework.batch.infrastructure.item.Chunk;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

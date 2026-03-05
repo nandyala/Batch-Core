@@ -59,7 +59,7 @@
          Singleton: shared safely across threads (read-only metadata).
          ================================================================ -->
     <bean id="mtCustomerReportQueryProvider"
-          class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+          class="org.springframework.batch.infrastructure.item.database.support.SqlPagingQueryProviderFactoryBean">
         <property name="dataSource"    ref="secondaryDataSource"/>
         <property name="selectClause"  value="SELECT customer_id, customer_name, region, total_orders, total_amount, report_date"/>
         <property name="fromClause"    value="FROM CUSTOMER_REPORT"/>
@@ -82,10 +82,10 @@
          parameterValues wires job parameter batchDate into the WHERE clause.
          ================================================================ -->
     <bean id="mtCustomerReportReader"
-          class="org.springframework.batch.item.database.JdbcPagingItemReader"
+          class="org.springframework.batch.infrastructure.item.database.JdbcPagingItemReader"
           scope="step">
-        <property name="dataSource"     ref="secondaryDataSource"/>
-        <property name="queryProvider"  ref="mtCustomerReportQueryProvider"/>
+        <constructor-arg   ref="secondaryDataSource"/>
+        <constructor-arg  ref="mtCustomerReportQueryProvider"/>
         <property name="pageSize"       value="${batch.mtdbtofile.pageSize:100}"/>
         <!-- Bind :batchDate named parameter from job parameters -->
         <property name="parameterValues">
@@ -120,7 +120,7 @@
          below wraps it and is wired to the chunk instead.
          ================================================================ -->
     <bean id="mtCustomerReportFileWriter"
-          class="org.springframework.batch.item.file.FlatFileItemWriter"
+          class="org.springframework.batch.infrastructure.item.file.FlatFileItemWriter"
           scope="step">
         <property name="resource"
                   value="file:${batch.dbtofile.outputDir}/mt-customer-report-#{jobParameters['batchDate']}.csv.tmp"/>
@@ -128,17 +128,17 @@
         <property name="headerCallback">
             <bean class="com.example.batch.dbtofile.CustomerReportHeaderCallback"/>
         </property>
-        <property name="lineAggregator">
-            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+        <constructor-arg>
+            <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator">
                 <property name="delimiter" value=","/>
                 <property name="fieldExtractor">
-                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
-                        <property name="names"
+                    <bean class="org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor">
+                        <constructor-arg
                                   value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
                     </bean>
                 </property>
             </bean>
-        </property>
+        </constructor-arg>
         <!--
   saveState=false: multi-threaded steps cannot checkpoint per-thread
   reader positions reliably. Disabling state-saving prevents the reader
@@ -157,9 +157,9 @@
          Step-scoped here so open()/close() lifecycle hooks are honoured.
          ================================================================ -->
     <bean id="mtCustomerReportSyncWriter"
-          class="org.springframework.batch.item.support.SynchronizedItemStreamWriter"
+          class="org.springframework.batch.infrastructure.item.support.SynchronizedItemStreamWriter"
           scope="step">
-        <property name="delegate" ref="mtCustomerReportFileWriter"/>
+        <constructor-arg ref="mtCustomerReportFileWriter"/>
     </bean>
 
     <!-- ================================================================

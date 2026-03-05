@@ -1,9 +1,9 @@
 package com.example.batch.listener;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
@@ -19,7 +19,7 @@ class JobStatisticsListenerTest {
 
     private JobExecution buildJobExecution() {
         JobInstance instance = new JobInstance(1L, "testJob");
-        return new JobExecution(instance, 1L, new JobParameters());
+        return new JobExecution(1L, instance, new JobParameters());
     }
 
     @Test
@@ -38,7 +38,7 @@ class JobStatisticsListenerTest {
     void beforeAndAfterJob_withMultipleParams_doesNotThrow() {
         JobInstance instance = new JobInstance(2L, "invoiceJob");
         JobParameters params = new JobParameters();
-        JobExecution je = new JobExecution(instance, 2L, params);
+        JobExecution je = new JobExecution(2L, instance, params);
 
         assertDoesNotThrow(() -> listener.beforeJob(je));
         assertDoesNotThrow(() -> listener.afterJob(je));

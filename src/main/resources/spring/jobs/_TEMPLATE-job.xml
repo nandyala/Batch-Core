@@ -75,7 +75,7 @@
          ================================================================ -->
     <!-- TODO: replace the bean class and configure for your use case -->
     <bean id="templateItemReader"
-          class="org.springframework.batch.item.file.FlatFileItemReader"
+          class="org.springframework.batch.infrastructure.item.file.FlatFileItemReader"
           scope="step">
         <!-- TODO: set resource, lineMapper, linesToSkip, etc. -->
         <!--
@@ -83,9 +83,9 @@
         <property name="linesToSkip" value="1"/>
         <property name="saveState"   value="false"/>   ← required for multi-threaded steps
         <property name="lineMapper">
-            <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+            <bean class="org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper">
                 <property name="lineTokenizer">
-                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+                    <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer">
                         <property name="delimiter" value=","/>
                         <property name="names"     value="field1,field2,field3"/>
                     </bean>
@@ -116,7 +116,7 @@
          ================================================================ -->
     <!-- TODO: replace the bean class and configure for your use case -->
     <bean id="templateItemWriter"
-          class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+          class="org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter">
         <property name="dataSource" ref="dataSource"/>
         <!-- TODO: replace with your SQL -->
         <!--
@@ -127,7 +127,7 @@
             </value>
         </property>
         <property name="itemSqlParameterSourceProvider">
-            <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+            <bean class="org.springframework.batch.infrastructure.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
         </property>
         <property name="assertUpdates" value="false"/>
         -->
@@ -165,7 +165,7 @@
                     <batch:skippable-exception-classes>
                         <batch:include class="java.lang.IllegalArgumentException"/>
                         <batch:include class="java.lang.IllegalStateException"/>
-                        <batch:include class="org.springframework.batch.item.file.FlatFileParseException"/>
+                        <batch:include class="org.springframework.batch.infrastructure.item.file.FlatFileParseException"/>
                         <batch:include class="org.springframework.dao.DataIntegrityViolationException"/>
                         <batch:include class="java.sql.SQLTransientException"/>
                         <batch:include class="org.springframework.dao.TransientDataAccessException"/>
@@ -221,13 +221,13 @@
     -->
     <!--
     <bean id="templateSyncReader"
-          class="org.springframework.batch.item.support.SynchronizedItemStreamReader"
+          class="org.springframework.batch.infrastructure.item.support.SynchronizedItemStreamReader"
           scope="step">
         <property name="delegate" ref="templateItemReader"/>
     </bean>
 
     <bean id="templateSyncWriter"
-          class="org.springframework.batch.item.support.SynchronizedItemStreamWriter"
+          class="org.springframework.batch.infrastructure.item.support.SynchronizedItemStreamWriter"
           scope="step">
         <property name="delegate" ref="templateItemWriter"/>
     </bean>

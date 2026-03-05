@@ -18,10 +18,9 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for {@link JobRunStatsRepository} using an H2 in-memory database.
  *
- * <p>H2 is already on the test classpath.  The {@code pruneOldRecords()} method uses
- * MSSQL-specific {@code DATEADD} / {@code GETDATE()} syntax which H2 does not support;
- * that call fails silently (the exception is caught in {@code save()}) so insert
- * coverage is still achievable here.
+ * <p>H2 is already on the test classpath.  The {@code pruneOldRecords()} method computes
+ * the cutoff date in Java and passes it as a plain {@code Timestamp} parameter, so the
+ * same SQL runs cleanly on both H2 and SQL Server without any dialect-specific syntax.
  *
  * <p>Tests cover:
  * <ul>

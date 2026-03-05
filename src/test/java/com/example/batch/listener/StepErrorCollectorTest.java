@@ -2,10 +2,10 @@ package com.example.batch.listener;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobInstance;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.step.StepExecution;
 
 import org.springframework.dao.TransientDataAccessResourceException;
 
@@ -30,7 +30,7 @@ class StepErrorCollectorTest {
         collector = new StepErrorCollector();
 
         JobInstance jobInstance = new JobInstance(1L, "testJob");
-        JobExecution jobExecution = new JobExecution(jobInstance, 1L, new JobParameters());
+        JobExecution jobExecution = new JobExecution(1L, jobInstance, new JobParameters());
         stepExecution = new StepExecution("testStep", jobExecution);
 
         // Wire the step execution into the collector (mimics beforeStep callback)

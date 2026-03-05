@@ -3,9 +3,9 @@ package com.example.batch.listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
-import org.springframework.batch.core.listener.SkipListenerSupport;
+import org.springframework.batch.core.step.StepExecution;
+import org.springframework.batch.core.listener.StepExecutionListener;
+import org.springframework.batch.core.listener.SkipListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.List;
  * {@code ExecutionContext} under key {@value #ERRORS_KEY}.
  *
  * <p>Implements both {@link StepExecutionListener} (to capture the current
- * step reference in {@code beforeStep}) and {@link SkipListenerSupport}
+ * step reference in {@code beforeStep}) and {@link SkipListener}
  * (to record each skipped item and its exception).
  *
  * <p>The stored {@code List<String>} is capped at {@value #MAX_ERRORS} entries
@@ -45,8 +45,7 @@ import java.util.List;
  *
  * <p>No Spring annotations — wired via XML.
  */
-public class StepErrorCollector extends SkipListenerSupport<Object, Object>
-        implements StepExecutionListener {
+public class StepErrorCollector implements SkipListener<Object, Object>, StepExecutionListener {
 
     private static final Logger log = LoggerFactory.getLogger(StepErrorCollector.class);
 
@@ -77,7 +76,7 @@ public class StepErrorCollector extends SkipListenerSupport<Object, Object>
     }
 
     // ---------------------------------------------------------------
-    // SkipListenerSupport  (override only the three onSkipIn* methods)
+    // SkipListener  (all three onSkipIn* methods)
     // ---------------------------------------------------------------
 
     @Override

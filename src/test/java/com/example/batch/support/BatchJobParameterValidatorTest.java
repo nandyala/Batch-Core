@@ -4,9 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
 
 import java.util.Set;
 
@@ -38,7 +38,7 @@ class BatchJobParameterValidatorTest {
     }
 
     @Test
-    void validate_requiredParamPresent_passes() throws JobParametersInvalidException {
+    void validate_requiredParamPresent_passes() throws InvalidJobParametersException {
         validator.setRequiredParams(Set.of("batchDate"));
         JobParameters params = new JobParametersBuilder()
                 .addString("batchDate", "2026-01-15")
@@ -51,8 +51,8 @@ class BatchJobParameterValidatorTest {
         validator.setRequiredParams(Set.of("batchDate"));
         JobParameters params = new JobParametersBuilder().toJobParameters();
 
-        JobParametersInvalidException ex = assertThrows(
-                JobParametersInvalidException.class,
+        InvalidJobParametersException ex = assertThrows(
+                InvalidJobParametersException.class,
                 () -> validator.validate(params));
 
         assertTrue(ex.getMessage().contains("batchDate"),
@@ -69,12 +69,12 @@ class BatchJobParameterValidatorTest {
                 // "region" is missing
                 .toJobParameters();
 
-        assertThrows(JobParametersInvalidException.class,
+        assertThrows(InvalidJobParametersException.class,
                 () -> validator.validate(params));
     }
 
     @Test
-    void validate_multipleRequiredParams_allPresent_passes() throws JobParametersInvalidException {
+    void validate_multipleRequiredParams_allPresent_passes() throws InvalidJobParametersException {
         validator.setRequiredParams(Set.of("batchDate", "region"));
         JobParameters params = new JobParametersBuilder()
                 .addString("batchDate", "2026-01-15")
@@ -89,7 +89,7 @@ class BatchJobParameterValidatorTest {
 
     @ParameterizedTest(name = "valid batchDate=\"{0}\" passes")
     @ValueSource(strings = {"2026-01-15", "2025-12-31", "2024-02-29", "2000-01-01"})
-    void validate_validBatchDate_passes(String date) throws JobParametersInvalidException {
+    void validate_validBatchDate_passes(String date) throws InvalidJobParametersException {
         JobParameters params = new JobParametersBuilder()
                 .addString("batchDate", date)
                 .toJobParameters();
@@ -110,8 +110,8 @@ class BatchJobParameterValidatorTest {
                 .addString("batchDate", date)
                 .toJobParameters();
 
-        JobParametersInvalidException ex = assertThrows(
-                JobParametersInvalidException.class,
+        InvalidJobParametersException ex = assertThrows(
+                InvalidJobParametersException.class,
                 () -> validator.validate(params));
 
         assertTrue(ex.getMessage().contains("batchDate"),
@@ -121,7 +121,7 @@ class BatchJobParameterValidatorTest {
     }
 
     @Test
-    void validate_batchDateAbsent_passes() throws JobParametersInvalidException {
+    void validate_batchDateAbsent_passes() throws InvalidJobParametersException {
         // batchDate is optional — absence is valid unless marked required
         JobParameters params = new JobParametersBuilder()
                 .addString("otherParam", "value")
@@ -130,7 +130,7 @@ class BatchJobParameterValidatorTest {
     }
 
     @Test
-    void validate_batchDateValidAndRequiredPresent_passes() throws JobParametersInvalidException {
+    void validate_batchDateValidAndRequiredPresent_passes() throws InvalidJobParametersException {
         validator.setRequiredParams(Set.of("batchDate"));
         JobParameters params = new JobParametersBuilder()
                 .addString("batchDate", "2026-06-30")

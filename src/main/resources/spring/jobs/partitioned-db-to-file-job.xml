@@ -120,10 +120,13 @@
          No SynchronizedItemStreamReader needed — each worker is isolated.
          ================================================================ -->
     <bean id="partitionedCustomerReportReader"
-          class="org.springframework.batch.item.database.JdbcCursorItemReader"
+          class="org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader"
           scope="step">
-        <property name="dataSource" ref="secondaryDataSource"/>
-        <property name="sql">
+        <constructor-arg index="0" ref="secondaryDataSource"/>
+        <constructor-arg index="2">
+            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
+        </constructor-arg>
+        <constructor-arg index="1">
             <value>
                 SELECT customer_id, customer_name, region,
                        total_orders, total_amount, report_date
@@ -133,10 +136,7 @@
                   AND  report_date = CONVERT(date, '#{jobParameters['batchDate']}', 23)
                 ORDER  BY customer_id
             </value>
-        </property>
-        <property name="rowMapper">
-            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
-        </property>
+        </constructor-arg>
     </bean>
 
     <!-- ================================================================
@@ -152,25 +152,25 @@
          No SynchronizedItemStreamWriter needed.
          ================================================================ -->
     <bean id="partitionedCustomerReportWriter"
-          class="org.springframework.batch.item.file.FlatFileItemWriter"
+          class="org.springframework.batch.infrastructure.item.file.FlatFileItemWriter"
           scope="step">
-        <property name="resource"
+        <constructor-arg
                   value="file:${batch.partitioned.outputDir}/partitioned-customer-report-#{jobParameters['batchDate']}-p#{stepExecutionContext['partitionNumber']}.csv"/>
         <property name="shouldDeleteIfExists" value="true"/>
         <property name="headerCallback">
             <bean class="com.example.batch.dbtofile.CustomerReportHeaderCallback"/>
         </property>
-        <property name="lineAggregator">
-            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+        <constructor-arg>
+            <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator">
                 <property name="delimiter" value=","/>
                 <property name="fieldExtractor">
-                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
-                        <property name="names"
+                    <bean class="org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor">
+                        <constructor-arg
                                   value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
                     </bean>
                 </property>
             </bean>
-        </property>
+        </constructor-arg>
     </bean>
 
     <!-- ================================================================

@@ -61,11 +61,11 @@
          worker's query is completely independent of other workers' writes.
          ================================================================ -->
     <bean id="workItemQueryProvider"
-          class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+          class="org.springframework.batch.infrastructure.item.database.support.SqlPagingQueryProviderFactoryBean">
         <property name="dataSource"    ref="dataSource"/>
         <property name="selectClause"  value="SELECT id, payload, priority, status, created_at, processed_at"/>
         <property name="fromClause"    value="FROM WORK_ITEM"/>
-        <property name="whereClause"   value="WHERE status = 'PENDING'"/>
+        <property name="whereClause"   value="WHERE status = 'PROCESSED'"/>
         <!-- sortKey MUST be unique to guarantee consistent paging across threads -->
         <property name="sortKey"       value="id"/>
     </bean>
@@ -80,10 +80,10 @@
          On restart the reader re-queries from page 0.
          ================================================================ -->
     <bean id="workItemReader"
-          class="org.springframework.batch.item.database.JdbcPagingItemReader"
+          class="org.springframework.batch.infrastructure.item.database.JdbcPagingItemReader"
           scope="step">
-        <property name="dataSource"     ref="dataSource"/>
-        <property name="queryProvider"  ref="workItemQueryProvider"/>
+        <constructor-arg    ref="dataSource"/>
+        <constructor-arg ref="workItemQueryProvider"/>
         <property name="pageSize"       value="${batch.multithreaded.pageSize:50}"/>
         <property name="rowMapper">
             <bean class="com.example.batch.multithreaded.WorkItemRowMapper"/>
@@ -103,7 +103,7 @@
          Updates the WORK_ITEM row with PROCESSED status + timestamp.
          ================================================================ -->
     <bean id="workItemWriter"
-          class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+          class="org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter">
         <property name="dataSource" ref="dataSource"/>
         <property name="sql">
             <value>
@@ -115,7 +115,7 @@
             </value>
         </property>
         <property name="itemSqlParameterSourceProvider">
-            <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+            <bean class="org.springframework.batch.infrastructure.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
         </property>
     </bean>
 

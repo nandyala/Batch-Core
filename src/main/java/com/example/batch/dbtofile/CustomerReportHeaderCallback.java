@@ -1,6 +1,6 @@
 package com.example.batch.dbtofile;
 
-import org.springframework.batch.item.file.FlatFileHeaderCallback;
+import org.springframework.batch.infrastructure.item.file.FlatFileHeaderCallback;
 
 import java.io.IOException;
 import java.io.Writer;

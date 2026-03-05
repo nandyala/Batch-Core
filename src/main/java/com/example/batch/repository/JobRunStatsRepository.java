@@ -132,11 +132,14 @@ public class JobRunStatsRepository {
     // ---------------------------------------------------------------
 
     private void pruneOldRecords() {
-        // Child step rows cascade via ON DELETE CASCADE — only need to delete parent
+        // Compute cutoff in Java — avoids MSSQL-specific DATEADD/GETDATE() so the
+        // same SQL works on H2 (tests) and SQL Server (production).
+        // Child step rows cascade via ON DELETE CASCADE — only need to delete parent.
+        Timestamp cutoff = new Timestamp(
+                System.currentTimeMillis() - TimeUnit.DAYS.toMillis(retentionDays));
+
         int deleted = jdbc.update(
-            "DELETE FROM BATCH_JOB_RUN_STATS " +
-            "WHERE created_at < DATEADD(DAY, -?, GETDATE())",
-            retentionDays);
+            "DELETE FROM BATCH_JOB_RUN_STATS WHERE created_at < ?", cutoff);
 
         if (deleted > 0) {
             log.info("Pruned {} job run stats record(s) older than {} day(s).",

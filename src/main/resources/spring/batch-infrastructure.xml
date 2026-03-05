@@ -115,7 +115,7 @@
                 <property name="ignoreFailedDrops"  value="true"/>
                 <property name="scripts">
                     <list>
-                        <!-- Spring Batch 5 ships this SQL for SQL Server -->
+                        <!-- Spring Batch 6 ships this SQL for SQL Server -->
                         <value>classpath:org/springframework/batch/core/schema-sqlserver.sql</value>
                     </list>
                 </property>
@@ -185,7 +185,7 @@
          Job Explorer — read-only view of execution history
          ================================================================ -->
     <bean id="jobExplorer"
-          class="org.springframework.batch.core.explore.support.JobExplorerFactoryBean">
+          class="org.springframework.batch.core.repository.explore.support.JobExplorerFactoryBean">
         <property name="dataSource"         ref="dataSource"/>
         <property name="transactionManager" ref="transactionManager"/>
         <property name="tablePrefix"        value="BATCH_"/>
