@@ -1,0 +1,252 @@
+2026-03-02 09:57:09.133 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-02 09:57:09.146 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    -   Correlation ID : C916C0E9
+2026-03-02 09:57:09.148 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    -   Job XML        : spring/jobs/db-to-file-job.xml
+2026-03-02 09:57:09.148 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    -   Job Bean       : dbToFileJob
+2026-03-02 09:57:09.148 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    -   CLI Params     : {batchDate=2026-01-15}
+2026-03-02 09:57:09.149 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-02 09:57:09.202 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    - Applied 1 CLI param(s) as property overrides.
+2026-03-02 09:57:09.832 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Starting...
+2026-03-02 09:57:10.397 [C916C0E9] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - PrimaryPool - Added connection ConnectionID:1 ClientConnectionId: 95d6ebb0-7945-4cba-8a98-755e1cc66fc3
+2026-03-02 09:57:10.399 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Start completed.
+2026-03-02 09:57:10.472 [C916C0E9] [main] INFO  o.s.b.c.r.s.JobRepositoryFactoryBean - No database type set, using meta data indicating: SQLSERVER
+2026-03-02 09:57:10.700 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    - Config hash: NO-CONFIG
+2026-03-02 09:57:10.702 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    - Launching 'dbToFileJob' with params: {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=C916C0E9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772463430701, type=class java.lang.Long, identifying=true}'}
+2026-03-02 09:57:10.748 [C916C0E9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-02 09:57:10.749 [C916C0E9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=C916C0E9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772463430701, type=class java.lang.Long, identifying=true}'}
+2026-03-02 09:57:10.795 [C916C0E9] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=dbToFileJob]] launched with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=C916C0E9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772463430701, type=class java.lang.Long, identifying=true}'}]
+2026-03-02 09:57:10.807 [C916C0E9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-02 09:57:10.808 [C916C0E9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=C916C0E9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772463430701, type=class java.lang.Long, identifying=true}'}
+2026-03-02 09:57:10.822 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 09:57:10.822 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB STARTED
+2026-03-02 09:57:10.822 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : dbToFileJob
+2026-03-02 09:57:10.822 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 21
+2026-03-02 09:57:10.822 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Parameters   : {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=C916C0E9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772463430701, type=class java.lang.Long, identifying=true}'}
+2026-03-02 09:57:10.822 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 09:57:10.851 [C916C0E9] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [exportCustomerReportStep]
+2026-03-02 09:57:10.860 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step starting: [exportCustomerReportStep] ---
+2026-03-02 09:57:10.899 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Starting...
+2026-03-02 09:57:11.328 [C916C0E9] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - SecondaryPool - Added connection ConnectionID:3 ClientConnectionId: 7a0d5e54-cda5-46c2-9170-15549b8c8704
+2026-03-02 09:57:11.328 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Start completed.
+2026-03-02 09:57:11.374 [C916C0E9] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C004' — no orders in period
+2026-03-02 09:57:11.374 [C916C0E9] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C008' — no orders in period
+2026-03-02 09:57:11.375 [C916C0E9] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C016' — no orders in period
+2026-03-02 09:57:11.387 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step completed: [exportCustomerReportStep] ---
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Exit Status : COMPLETED
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Read        : 16
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Written     : 13
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Filtered    : 3
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Skipped     : 0  (read=0 | process=0 | write=0)
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Commits     : 1
+2026-03-02 09:57:11.388 [C916C0E9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Rollbacks   : 0
+2026-03-02 09:57:11.390 [C916C0E9] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [exportCustomerReportStep] executed in 539ms
+2026-03-02 09:57:11.408 [C916C0E9] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [statisticsAndEmailStep]
+2026-03-02 09:57:11.421 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 09:57:11.421 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   JOB COMPLETION REPORT
+2026-03-02 09:57:11.421 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 09:57:11.422 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Job              : Db To File Job
+2026-03-02 09:57:11.422 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Correlation ID   : C916C0E9
+2026-03-02 09:57:11.422 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Config Hash      : NO-CONFIG
+2026-03-02 09:57:11.422 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Started          : Mon Mar 02 09:57:10 EST 2026
+2026-03-02 09:57:11.425 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Finished         : Mon Mar 02 09:57:11 EST 2026
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Duration         : 0s
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Overall Result   : Completed Successfully
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   STEP BREAKDOWN
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Export Customer Report  [Completed Successfully]
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Records Received  : 16
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Successfully Saved: 13
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Flagged for Review: 3
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Errors            : 0
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   TOTALS
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 09:57:11.427 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Records Received  : 16
+2026-03-02 09:57:11.428 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Successfully Saved: 13
+2026-03-02 09:57:11.428 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Flagged for Review: 3
+2026-03-02 09:57:11.428 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Errors            : 0
+2026-03-02 09:57:11.428 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 09:57:11.428 [C916C0E9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - Email reporting is disabled (batch.email.enabled=false) — skipping.
+2026-03-02 09:57:11.446 [C916C0E9] [main] INFO  c.e.b.r.JobRunStatsRepository       - Run statistics saved to DB. id=13 correlationId=C916C0E9
+2026-03-02 09:57:11.450 [C916C0E9] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [statisticsAndEmailStep] executed in 42ms
+2026-03-02 09:57:11.455 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 09:57:11.455 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB FINISHED
+2026-03-02 09:57:11.455 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : dbToFileJob
+2026-03-02 09:57:11.455 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 21
+2026-03-02 09:57:11.455 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Status       : COMPLETED
+2026-03-02 09:57:11.455 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Exit Code    : COMPLETED
+2026-03-02 09:57:11.456 [C916C0E9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 09:57:11.461 [C916C0E9] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=dbToFileJob]] completed with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=C916C0E9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772463430701, type=class java.lang.Long, identifying=true}'}] and the following status: [COMPLETED] in 647ms
+2026-03-02 09:57:11.461 [C916C0E9] [main] INFO  c.e.batch.SpringBatchApplication    - Finished 'dbToFileJob' — status=COMPLETED exit=COMPLETED correlationId=C916C0E9
+2026-03-02 09:57:11.462 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown initiated...
+2026-03-02 09:57:11.464 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown completed.
+2026-03-02 09:57:11.465 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown initiated...
+2026-03-02 09:57:11.466 [C916C0E9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown completed.
+2026-03-02 11:21:20.900 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-02 11:21:20.902 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    -   Correlation ID : 4B5C0687
+2026-03-02 11:21:20.903 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    -   Job XML        : spring/jobs/db-to-file-job.xml
+2026-03-02 11:21:20.903 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    -   Job Bean       : dbToFileJob
+2026-03-02 11:21:20.903 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    -   CLI Params     : {batchDate=2026-01-15}
+2026-03-02 11:21:20.903 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-02 11:21:20.962 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    - Applied 1 CLI param(s) as property overrides.
+2026-03-02 11:21:21.651 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Starting...
+2026-03-02 11:21:22.205 [4B5C0687] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - PrimaryPool - Added connection ConnectionID:1 ClientConnectionId: cfeaa9b8-e9d1-4fe1-9d29-731aaaa66397
+2026-03-02 11:21:22.207 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Start completed.
+2026-03-02 11:21:22.291 [4B5C0687] [main] INFO  o.s.b.c.r.s.JobRepositoryFactoryBean - No database type set, using meta data indicating: SQLSERVER
+2026-03-02 11:21:22.575 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    - Config hash: NO-CONFIG
+2026-03-02 11:21:22.576 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    - Launching 'dbToFileJob' with params: {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=4B5C0687, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468482576, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:22.630 [4B5C0687] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-02 11:21:22.630 [4B5C0687] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=4B5C0687, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468482576, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:22.681 [4B5C0687] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=dbToFileJob]] launched with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=4B5C0687, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468482576, type=class java.lang.Long, identifying=true}'}]
+2026-03-02 11:21:22.698 [4B5C0687] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-02 11:21:22.698 [4B5C0687] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=4B5C0687, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468482576, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:22.715 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:22.715 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB STARTED
+2026-03-02 11:21:22.715 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : dbToFileJob
+2026-03-02 11:21:22.715 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 22
+2026-03-02 11:21:22.715 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Parameters   : {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=4B5C0687, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468482576, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:22.715 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:22.745 [4B5C0687] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [exportCustomerReportStep]
+2026-03-02 11:21:22.756 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step starting: [exportCustomerReportStep] ---
+2026-03-02 11:21:22.788 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Starting...
+2026-03-02 11:21:23.095 [4B5C0687] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - SecondaryPool - Added connection ConnectionID:3 ClientConnectionId: e4143511-1c1c-4a5f-a12b-45419a129d74
+2026-03-02 11:21:23.095 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Start completed.
+2026-03-02 11:21:23.143 [4B5C0687] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C004' — no orders in period
+2026-03-02 11:21:23.144 [4B5C0687] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C008' — no orders in period
+2026-03-02 11:21:23.144 [4B5C0687] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C016' — no orders in period
+2026-03-02 11:21:23.154 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step completed: [exportCustomerReportStep] ---
+2026-03-02 11:21:23.154 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Exit Status : COMPLETED
+2026-03-02 11:21:23.154 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Read        : 16
+2026-03-02 11:21:23.154 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Written     : 13
+2026-03-02 11:21:23.154 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Filtered    : 3
+2026-03-02 11:21:23.155 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Skipped     : 0  (read=0 | process=0 | write=0)
+2026-03-02 11:21:23.155 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Commits     : 1
+2026-03-02 11:21:23.155 [4B5C0687] [main] INFO  c.e.b.l.StepStatisticsListener      -   Rollbacks   : 0
+2026-03-02 11:21:23.157 [4B5C0687] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [exportCustomerReportStep] executed in 412ms
+2026-03-02 11:21:23.177 [4B5C0687] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [statisticsAndEmailStep]
+2026-03-02 11:21:23.190 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 11:21:23.190 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   JOB COMPLETION REPORT
+2026-03-02 11:21:23.190 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 11:21:23.190 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Job              : Db To File Job
+2026-03-02 11:21:23.191 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Correlation ID   : 4B5C0687
+2026-03-02 11:21:23.191 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Config Hash      : NO-CONFIG
+2026-03-02 11:21:23.191 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Started          : Mon Mar 02 11:21:22 EST 2026
+2026-03-02 11:21:23.195 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Finished         : Mon Mar 02 11:21:23 EST 2026
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Duration         : 0s
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Overall Result   : Completed Successfully
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   STEP BREAKDOWN
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Export Customer Report  [Completed Successfully]
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Records Received  : 16
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Successfully Saved: 13
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Flagged for Review: 3
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Errors            : 0
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   TOTALS
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Records Received  : 16
+2026-03-02 11:21:23.197 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Successfully Saved: 13
+2026-03-02 11:21:23.198 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Flagged for Review: 3
+2026-03-02 11:21:23.198 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Errors            : 0
+2026-03-02 11:21:23.198 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 11:21:23.198 [4B5C0687] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - Email reporting is disabled (batch.email.enabled=false) — skipping.
+2026-03-02 11:21:23.213 [4B5C0687] [main] INFO  c.e.b.r.JobRunStatsRepository       - Run statistics saved to DB. id=14 correlationId=4B5C0687
+2026-03-02 11:21:23.218 [4B5C0687] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [statisticsAndEmailStep] executed in 40ms
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB FINISHED
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : dbToFileJob
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 22
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Status       : COMPLETED
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       -   Exit Code    : COMPLETED
+2026-03-02 11:21:23.223 [4B5C0687] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:23.227 [4B5C0687] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=dbToFileJob]] completed with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=4B5C0687, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468482576, type=class java.lang.Long, identifying=true}'}] and the following status: [COMPLETED] in 525ms
+2026-03-02 11:21:23.227 [4B5C0687] [main] INFO  c.e.batch.SpringBatchApplication    - Finished 'dbToFileJob' — status=COMPLETED exit=COMPLETED correlationId=4B5C0687
+2026-03-02 11:21:23.229 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown initiated...
+2026-03-02 11:21:23.231 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown completed.
+2026-03-02 11:21:23.232 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown initiated...
+2026-03-02 11:21:23.233 [4B5C0687] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown completed.
+2026-03-02 11:21:52.455 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-02 11:21:52.458 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    -   Correlation ID : 449FABE5
+2026-03-02 11:21:52.459 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    -   Job XML        : spring/jobs/db-to-file-job.xml
+2026-03-02 11:21:52.459 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    -   Job Bean       : dbToFileJob
+2026-03-02 11:21:52.459 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    -   CLI Params     : {batchDate=2026-01-15}
+2026-03-02 11:21:52.459 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-02 11:21:52.512 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    - Applied 1 CLI param(s) as property overrides.
+2026-03-02 11:21:52.947 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Starting...
+2026-03-02 11:21:53.455 [449FABE5] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - PrimaryPool - Added connection ConnectionID:1 ClientConnectionId: d5acfb6a-2a83-4afd-9d98-b70624205e06
+2026-03-02 11:21:53.456 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Start completed.
+2026-03-02 11:21:53.512 [449FABE5] [main] INFO  o.s.b.c.r.s.JobRepositoryFactoryBean - No database type set, using meta data indicating: SQLSERVER
+2026-03-02 11:21:53.742 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    - Config hash: NO-CONFIG
+2026-03-02 11:21:53.744 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    - Launching 'dbToFileJob' with params: {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=449FABE5, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468513743, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:53.789 [449FABE5] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-02 11:21:53.789 [449FABE5] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=449FABE5, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468513743, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:53.821 [449FABE5] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=dbToFileJob]] launched with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=449FABE5, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468513743, type=class java.lang.Long, identifying=true}'}]
+2026-03-02 11:21:53.831 [449FABE5] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-02 11:21:53.832 [449FABE5] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=449FABE5, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468513743, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:53.839 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:53.839 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB STARTED
+2026-03-02 11:21:53.839 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : dbToFileJob
+2026-03-02 11:21:53.839 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 23
+2026-03-02 11:21:53.839 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Parameters   : {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=449FABE5, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468513743, type=class java.lang.Long, identifying=true}'}
+2026-03-02 11:21:53.839 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:53.852 [449FABE5] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [exportCustomerReportStep]
+2026-03-02 11:21:53.858 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step starting: [exportCustomerReportStep] ---
+2026-03-02 11:21:53.879 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Starting...
+2026-03-02 11:21:54.126 [449FABE5] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - SecondaryPool - Added connection ConnectionID:3 ClientConnectionId: 424514eb-0719-4250-9857-f50a277f505e
+2026-03-02 11:21:54.127 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Start completed.
+2026-03-02 11:21:54.161 [449FABE5] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C004' — no orders in period
+2026-03-02 11:21:54.161 [449FABE5] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C008' — no orders in period
+2026-03-02 11:21:54.162 [449FABE5] [main] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C016' — no orders in period
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step completed: [exportCustomerReportStep] ---
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Exit Status : COMPLETED
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Read        : 16
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Written     : 13
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Filtered    : 3
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Skipped     : 0  (read=0 | process=0 | write=0)
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Commits     : 1
+2026-03-02 11:21:54.171 [449FABE5] [main] INFO  c.e.b.l.StepStatisticsListener      -   Rollbacks   : 0
+2026-03-02 11:21:54.173 [449FABE5] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [exportCustomerReportStep] executed in 321ms
+2026-03-02 11:21:54.190 [449FABE5] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [statisticsAndEmailStep]
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   JOB COMPLETION REPORT
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Job              : Db To File Job
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Correlation ID   : 449FABE5
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Config Hash      : NO-CONFIG
+2026-03-02 11:21:54.195 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Started          : Mon Mar 02 11:21:53 EST 2026
+2026-03-02 11:21:54.199 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Finished         : Mon Mar 02 11:21:54 EST 2026
+2026-03-02 11:21:54.200 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Duration         : 0s
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Overall Result   : Completed Successfully
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   STEP BREAKDOWN
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Export Customer Report  [Completed Successfully]
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Records Received  : 16
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Successfully Saved: 13
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Flagged for Review: 3
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Errors            : 0
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   TOTALS
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-02 11:21:54.201 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Records Received  : 16
+2026-03-02 11:21:54.202 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Successfully Saved: 13
+2026-03-02 11:21:54.202 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Flagged for Review: 3
+2026-03-02 11:21:54.202 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Errors            : 0
+2026-03-02 11:21:54.202 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-02 11:21:54.202 [449FABE5] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - Email reporting is disabled (batch.email.enabled=false) — skipping.
+2026-03-02 11:21:54.208 [449FABE5] [main] INFO  c.e.b.r.JobRunStatsRepository       - Run statistics saved to DB. id=15 correlationId=449FABE5
+2026-03-02 11:21:54.211 [449FABE5] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [statisticsAndEmailStep] executed in 21ms
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB FINISHED
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : dbToFileJob
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 23
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Status       : COMPLETED
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       -   Exit Code    : COMPLETED
+2026-03-02 11:21:54.215 [449FABE5] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-02 11:21:54.219 [449FABE5] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=dbToFileJob]] completed with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=449FABE5, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772468513743, type=class java.lang.Long, identifying=true}'}] and the following status: [COMPLETED] in 382ms
+2026-03-02 11:21:54.220 [449FABE5] [main] INFO  c.e.batch.SpringBatchApplication    - Finished 'dbToFileJob' — status=COMPLETED exit=COMPLETED correlationId=449FABE5
+2026-03-02 11:21:54.221 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown initiated...
+2026-03-02 11:21:54.223 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown completed.
+2026-03-02 11:21:54.224 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown initiated...
+2026-03-02 11:21:54.224 [449FABE5] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown completed.

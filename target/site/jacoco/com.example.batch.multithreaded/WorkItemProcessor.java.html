@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WorkItemProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.multithreaded</a> &gt; <span class="el_source">WorkItemProcessor.java</span></div><h1>WorkItemProcessor.java</h1><pre class="source lang-java linenums">package com.example.batch.multithreaded;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.item.ItemProcessor;
+
+import java.time.LocalDateTime;
+
+/**
+ * Processes a {@link WorkItem} in a multi-threaded chunk step.
+ *
+ * &lt;p&gt;&lt;strong&gt;Thread safety:&lt;/strong&gt; This class is stateless — no instance fields
+ * are written during processing. It is safe to share a single bean instance across
+ * all concurrent chunk threads.
+ *
+ * &lt;p&gt;Responsibilities:
+ * &lt;ol&gt;
+ *   &lt;li&gt;Perform the unit of work described by {@code payload}.&lt;/li&gt;
+ *   &lt;li&gt;Set {@code status = PROCESSED} and {@code processedAt = now}.&lt;/li&gt;
+ *   &lt;li&gt;Throw {@link IllegalStateException} for logically invalid items
+ *       (PERMANENT skip — no retry).&lt;/li&gt;
+ *   &lt;li&gt;Throw {@link java.sql.SQLTransientException} for transient DB errors
+ *       (TRANSIENT — retried up to retry-limit before skip).&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;Returns {@code null} to filter items that should be skipped silently
+ * (increments Spring Batch filter count).
+ */
+<span class="fc" id="L29">public class WorkItemProcessor implements ItemProcessor&lt;WorkItem, WorkItem&gt; {</span>
+
+<span class="fc" id="L31">    private static final Logger log = LoggerFactory.getLogger(WorkItemProcessor.class);</span>
+
+    @Override
+    public WorkItem process(WorkItem item) {
+        // Validate payload is not empty
+<span class="fc bfc" id="L36" title="All 4 branches covered.">        if (item.getPayload() == null || item.getPayload().isBlank()) {</span>
+<span class="fc" id="L37">            throw new IllegalArgumentException(</span>
+<span class="fc" id="L38">                &quot;WorkItem id=&quot; + item.getId() + &quot; has an empty payload — skipping (PERMANENT)&quot;);</span>
+        }
+
+<span class="fc" id="L41">        log.debug(&quot;[thread={}] Processing WorkItem id={} priority={}&quot;,</span>
+<span class="fc" id="L42">                  Thread.currentThread().getName(), item.getId(), item.getPriority());</span>
+
+        // -----------------------------------------------------------------
+        // &gt;&gt;&gt; Replace this block with real business logic &lt;&lt;&lt;
+        // -----------------------------------------------------------------
+<span class="fc" id="L47">        String processedPayload = item.getPayload().trim().toUpperCase();</span>
+<span class="fc" id="L48">        item.setPayload(processedPayload);</span>
+        // -----------------------------------------------------------------
+
+<span class="fc" id="L51">        item.setStatus     (&quot;PROCESSED&quot;);</span>
+<span class="fc" id="L52">        item.setProcessedAt(LocalDateTime.now());</span>
+
+<span class="fc" id="L54">        return item;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

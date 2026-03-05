@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionRecord.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.filetodb</a> &gt; <span class="el_source">TransactionRecord.java</span></div><h1>TransactionRecord.java</h1><pre class="source lang-java linenums">package com.example.batch.filetodb;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * Represents one line from the incoming CSV transaction file.
+ * Populated by {@link TransactionFieldSetMapper} and written to the
+ * TRANSACTION_STAGING table by the file-to-db-job.
+ *
+ * &lt;p&gt;Expected CSV columns (header row required):
+ * &lt;pre&gt;
+ *   transaction_id, account_number, amount, transaction_type, transaction_date, description
+ * &lt;/pre&gt;
+ */
+<span class="fc" id="L16">public class TransactionRecord {</span>
+
+    private String     transactionId;
+    private String     accountNumber;
+    private BigDecimal amount;
+    /** CREDIT or DEBIT */
+    private String     transactionType;
+    private LocalDate  transactionDate;
+    private String     description;
+
+    // ---------------------------------------------------------------
+    // Getters / Setters
+    // ---------------------------------------------------------------
+
+<span class="fc" id="L30">    public String     getTransactionId()               { return transactionId; }</span>
+<span class="fc" id="L31">    public void       setTransactionId(String v)       { this.transactionId = v; }</span>
+
+<span class="fc" id="L33">    public String     getAccountNumber()               { return accountNumber; }</span>
+<span class="fc" id="L34">    public void       setAccountNumber(String v)       { this.accountNumber = v; }</span>
+
+<span class="fc" id="L36">    public BigDecimal getAmount()                      { return amount; }</span>
+<span class="fc" id="L37">    public void       setAmount(BigDecimal v)          { this.amount = v; }</span>
+
+<span class="fc" id="L39">    public String     getTransactionType()             { return transactionType; }</span>
+<span class="fc" id="L40">    public void       setTransactionType(String v)     { this.transactionType = v; }</span>
+
+<span class="fc" id="L42">    public LocalDate  getTransactionDate()             { return transactionDate; }</span>
+<span class="fc" id="L43">    public void       setTransactionDate(LocalDate v)  { this.transactionDate = v; }</span>
+
+<span class="fc" id="L45">    public String     getDescription()                 { return description; }</span>
+<span class="fc" id="L46">    public void       setDescription(String v)         { this.description = v; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

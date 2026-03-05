@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sample-job.xml
+  ==============
+  Demonstrates the full anatomy of an XML-based Spring Batch job:
+    • Chunk-oriented business step  (reader → processor → writer)
+    • Skip / retry policies
+    • Per-step logging via stepStatisticsListener
+    • Job-boundary logging via jobStatisticsListener
+    • Statistics report + email as the LAST step
+
+  Job execution flow
+  ──────────────────
+    readAndProcessStep  ──next──►  statisticsAndEmailStep
+         (chunk)                         (tasklet)
+                                   - aggregates all step counts
+                                   - prints log report
+                                   - sends HTML email
+
+  HOW TO ADD A NEW JOB
+  ─────────────────────
+  1. Copy this file → src/main/resources/spring/jobs/your-job.xml
+  2. Define your reader / processor / writer beans.
+  3. Chain business steps:  next="statisticsAndEmailStep"
+  4. Keep statisticsAndEmailStep as the very last step.
+  5. Run:  java -jar app.jar your-job
+     (the slug auto-resolves the XML and camelCase bean name)
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/batch
+               https://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <!-- ================================================================
+         Reader  (step-scoped: fresh instance per execution)
+         ─────────────────────────────────────────────────────────
+         Production replacement — JdbcCursorItemReader:
+
+         <bean id="sampleReader"
+               class="org.springframework.batch.item.database.JdbcCursorItemReader"
+               scope="step">
+           <property name="dataSource" ref="dataSource"/>
+           <property name="sql"
+                     value="SELECT id, name, email, status
+                              FROM   SAMPLE_INPUT
+                              WHERE  status = 'PENDING'"/>
+           <property name="rowMapper">
+             <bean class="com.example.batch.sample.SampleRecordRowMapper"/>
+           </property>
+         </bean>
+         ================================================================ -->
+    <bean id="sampleReader"
+          class="com.example.batch.sample.SampleItemReader"
+          scope="step"/>
+
+    <!-- ================================================================
+         Processor  (step-scoped)
+         ================================================================ -->
+    <bean id="sampleProcessor"
+          class="com.example.batch.sample.SampleItemProcessor"
+          scope="step"/>
+
+    <!-- ================================================================
+         Writer  (step-scoped)
+         ─────────────────────────────────────────────────────────
+         Production replacement — JdbcBatchItemWriter:
+
+         <bean id="sampleWriter"
+               class="org.springframework.batch.item.database.JdbcBatchItemWriter"
+               scope="step">
+           <property name="dataSource" ref="dataSource"/>
+           <property name="sql">
+             <value>
+               INSERT INTO SAMPLE_OUTPUT (id, name, email, processed_date)
+               VALUES (:id, :name, :email, GETDATE())
+             </value>
+           </property>
+           <property name="itemSqlParameterSourceProvider">
+             <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+           </property>
+         </bean>
+         ================================================================ -->
+    <bean id="sampleWriter"
+          class="com.example.batch.sample.SampleItemWriter"
+          scope="step"/>
+
+    <!-- ================================================================
+         JOB DEFINITION
+         ================================================================ -->
+    <batch:job id="sampleJob" restartable="true">
+
+        <!-- Parameter validation: batchDate format + any required params -->
+        <batch:validator ref="batchJobParameterValidator"/>
+
+        <!-- Job-boundary logging: logs start + final status -->
+        <batch:listeners>
+            <batch:listener ref="jobStatisticsListener"/>
+        </batch:listeners>
+
+        <!-- ============================================================
+             STEP 1 — Business chunk step
+             next="statisticsAndEmailStep" chains to the reporting step.
+
+             Exception taxonomy (see BatchExceptionClasses for rationale):
+               PERMANENT (skip only, no retry) — data/logic errors
+               TRANSIENT (retry then skip)     — infrastructure blips
+
+             skip-limit  : total items skipped before the step itself fails
+             retry-limit : attempts per item before it is counted as skipped
+             ============================================================ -->
+        <batch:step id="readAndProcessStep" next="statisticsAndEmailStep">
+            <batch:tasklet transaction-manager="transactionManager">
+
+                <batch:chunk reader="sampleReader"
+                             processor="sampleProcessor"
+                             writer="sampleWriter"
+                             commit-interval="${batch.sample.commitInterval:5}"
+                             skip-limit="10"
+                             retry-limit="3">
+
+                    <!-- PERMANENT: skip immediately — data/logic errors -->
+                    <batch:skippable-exception-classes>
+                        <batch:include class="java.lang.IllegalArgumentException"/>
+                        <batch:include class="java.lang.IllegalStateException"/>
+                        <batch:include class="org.springframework.dao.DataIntegrityViolationException"/>
+                        <!-- Also include transient so they can be skipped after retry exhaustion -->
+                        <batch:include class="java.sql.SQLTransientException"/>
+                        <batch:include class="org.springframework.dao.TransientDataAccessException"/>
+                    </batch:skippable-exception-classes>
+
+                    <!-- TRANSIENT: retry up to retry-limit before skipping -->
+                    <batch:retryable-exception-classes>
+                        <batch:include class="java.sql.SQLTransientException"/>
+                        <batch:include class="org.springframework.dao.TransientDataAccessException"/>
+                    </batch:retryable-exception-classes>
+
+                </batch:chunk>
+
+                <!-- stepStatisticsListener: logs counts after each step  -->
+                <!-- stepErrorCollector: captures skip events to ExecutionContext -->
+                <batch:listeners>
+                    <batch:listener ref="stepStatisticsListener"/>
+                    <batch:listener ref="stepErrorCollector"/>
+                </batch:listeners>
+
+            </batch:tasklet>
+        </batch:step>
+
+        <!-- ============================================================
+             STEP 2 (LAST) — Statistics report + email
+             ─────────────────────────────────────────
+             statisticsAndEmailTasklet is declared in batch-listeners.xml.
+             This step:
+               1. Aggregates counts from all preceding steps
+               2. Prints a formatted statistics block to the log
+               3. Sends an HTML email report
+             ============================================================ -->
+        <batch:step id="statisticsAndEmailStep">
+            <batch:tasklet ref="statisticsAndEmailTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+    </batch:job>
+
+</beans>

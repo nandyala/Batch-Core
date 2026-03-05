@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileRenameTasklet.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.tasklet</a> &gt; <span class="el_source">FileRenameTasklet.java</span></div><h1>FileRenameTasklet.java</h1><pre class="source lang-java linenums">package com.example.batch.tasklet;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.repeat.RepeatStatus;
+
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+/**
+ * Renames the {@code .csv.tmp} file produced by {@code mt-db-to-file-job}
+ * to its final {@code .csv} name once all chunk writing has completed.
+ *
+ * &lt;h3&gt;Why write to .tmp first?&lt;/h3&gt;
+ * {@link org.springframework.batch.item.file.FlatFileItemWriter} writes
+ * incrementally — a downstream consumer polling the output directory would see
+ * a partial file mid-run. Writing to {@code .tmp} first and atomically renaming
+ * at the end ensures the final file appears only when it is complete.
+ *
+ * &lt;h3&gt;Restart safety&lt;/h3&gt;
+ * If the chunk step fails, the {@code .tmp} remains on disk.  On restart, the
+ * writer uses {@code shouldDeleteIfExists=true} so the partial file is
+ * overwritten before this tasklet runs.
+ *
+ * &lt;h3&gt;Configured by mt-db-to-file-job.xml&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * &lt;bean id=&quot;renameFileTasklet&quot;
+ *       class=&quot;com.example.batch.tasklet.FileRenameTasklet&quot;
+ *       scope=&quot;step&quot;&gt;
+ *     &lt;property name=&quot;outputDir&quot; value=&quot;${batch.dbtofile.outputDir}&quot;/&gt;
+ *     &lt;property name=&quot;batchDate&quot; value=&quot;#{jobParameters['batchDate']}&quot;/&gt;
+ * &lt;/bean&gt;
+ * }&lt;/pre&gt;
+ */
+<span class="fc" id="L41">public class FileRenameTasklet implements Tasklet {</span>
+
+<span class="fc" id="L43">    private static final Logger log = LoggerFactory.getLogger(FileRenameTasklet.class);</span>
+
+    private String outputDir;
+    private String batchDate;
+
+<span class="fc" id="L48">    public void setOutputDir(String outputDir) { this.outputDir = outputDir; }</span>
+<span class="fc" id="L49">    public void setBatchDate(String batchDate)  { this.batchDate = batchDate; }</span>
+
+    @Override
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws IOException {
+
+<span class="fc" id="L54">        Path source = Path.of(outputDir, &quot;mt-customer-report-&quot; + batchDate + &quot;.csv.tmp&quot;);</span>
+<span class="fc" id="L55">        Path target = Path.of(outputDir, &quot;mt-customer-report-&quot; + batchDate + &quot;.csv&quot;);</span>
+
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (!Files.exists(source)) {</span>
+<span class="fc" id="L58">            throw new IllegalStateException(</span>
+                &quot;Expected tmp file not found — did the chunk step complete successfully? Path: &quot;
+<span class="fc" id="L60">                + source.toAbsolutePath());</span>
+        }
+
+<span class="fc" id="L63">        log.info(&quot;Renaming output file: {} → {}&quot;, source.getFileName(), target.getFileName());</span>
+
+        try {
+            // Atomic move: the final file appears all-at-once with no partial-visibility window
+<span class="fc" id="L67">            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);</span>
+<span class="fc" id="L68">            log.info(&quot;Atomic rename succeeded → {}&quot;, target.toAbsolutePath());</span>
+<span class="nc" id="L69">        } catch (AtomicMoveNotSupportedException ex) {</span>
+            // Cross-mount or filesystem limitation — fall back to non-atomic replace.
+            // Still safe: consumers only look for the .csv extension, not .csv.tmp.
+<span class="nc" id="L72">            log.warn(&quot;Atomic rename not supported on this filesystem — falling back to REPLACE_EXISTING move&quot;);</span>
+<span class="nc" id="L73">            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);</span>
+<span class="nc" id="L74">            log.info(&quot;Non-atomic rename succeeded → {}&quot;, target.toAbsolutePath());</span>
+<span class="fc" id="L75">        }</span>
+
+<span class="fc" id="L77">        return RepeatStatus.FINISHED;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

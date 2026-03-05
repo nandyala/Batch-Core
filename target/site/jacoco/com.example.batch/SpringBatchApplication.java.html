@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SpringBatchApplication.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch</a> &gt; <span class="el_source">SpringBatchApplication.java</span></div><h1>SpringBatchApplication.java</h1><pre class="source lang-java linenums">package com.example.batch;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.job.AbstractJob;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.context.support.GenericXmlApplicationContext;
+import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.core.env.PropertiesPropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.TreeMap;
+import java.util.UUID;
+
+/**
+ * Main entry point for the Spring Batch framework.
+ *
+ * &lt;h3&gt;Job slug convention&lt;/h3&gt;
+ * Pass just the job name slug — the framework resolves everything:
+ * &lt;pre&gt;
+ *   &quot;invoice-job&quot;  →  XML  spring/jobs/invoice-job.xml
+ *                  →  bean invoiceJob  (kebab → camelCase)
+ * &lt;/pre&gt;
+ *
+ * &lt;h3&gt;Usage&lt;/h3&gt;
+ * &lt;pre&gt;
+ *   java [-Dkey=value ...] -jar app.jar &amp;lt;job-slug&amp;gt; [key=value ...]
+ *
+ *   # Minimal
+ *   java -jar app.jar invoice-job
+ *
+ *   # With job parameters
+ *   java -jar app.jar invoice-job  batchDate=2026-01-15  retryMax=3
+ *
+ *   # With profile  (loads application-prod.properties from classpath)
+ *   java -Dapp.profile=prod  -jar app.jar invoice-job
+ *
+ *   # With external override file
+ *   java -Dapp.config.file=/etc/batch/prod.properties  -jar app.jar invoice-job
+ *
+ *   # Dry-run: load context + validate config, then exit (no job runs)
+ *   java -jar app.jar --dry-run invoice-job  batchDate=2026-01-15
+ *
+ *   # Backward-compat: explicit XML path + bean name still works
+ *   java -jar app.jar spring/jobs/invoice-job.xml invoiceJob batchDate=2026-01-15
+ * &lt;/pre&gt;
+ *
+ * &lt;h3&gt;Property priority (highest → lowest)&lt;/h3&gt;
+ * &lt;ol&gt;
+ *   &lt;li&gt;CLI {@code key=value} params  — injected into Spring env + JobParameters&lt;/li&gt;
+ *   &lt;li&gt;JVM {@code -Dkey=value} system properties&lt;/li&gt;
+ *   &lt;li&gt;OS environment variables&lt;/li&gt;
+ *   &lt;li&gt;External file  {@code -Dapp.config.file=/path/override.properties}&lt;/li&gt;
+ *   &lt;li&gt;Profile file   {@code -Dapp.profile=prod} → application-prod.properties&lt;/li&gt;
+ *   &lt;li&gt;{@code application.properties}  (base, lowest priority)&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;h3&gt;Exit codes&lt;/h3&gt;
+ * 0 = COMPLETED / DRY-RUN PASSED · 1 = FAILED / STOPPED · 2 = bad args / startup error / DRY-RUN FAILED
+ */
+<span class="nc" id="L83">public class SpringBatchApplication {</span>
+
+<span class="fc" id="L85">    private static final Logger log = LoggerFactory.getLogger(SpringBatchApplication.class);</span>
+
+    /**
+     * Shared infrastructure XMLs loaded for every job — unchanged when you add new jobs.
+     * &lt;ul&gt;
+     *   &lt;li&gt;{@code batch-infrastructure.xml} — datasources, transaction managers, job repository&lt;/li&gt;
+     *   &lt;li&gt;{@code batch-mail.xml}           — SMTP / JavaMailSender&lt;/li&gt;
+     *   &lt;li&gt;{@code batch-listeners.xml}      — statistics tasklet, step/job listeners, error collector&lt;/li&gt;
+     *   &lt;li&gt;{@code batch-step-defaults.xml}  — abstract executor parent bean for multi-threaded steps&lt;/li&gt;
+     * &lt;/ul&gt;
+     */
+<span class="fc" id="L96">    private static final String[] SHARED_XML = {</span>
+        &quot;spring/batch-infrastructure.xml&quot;,
+        &quot;spring/batch-mail.xml&quot;,
+        &quot;spring/batch-listeners.xml&quot;,
+        &quot;spring/batch-step-defaults.xml&quot;
+    };
+
+    private static final String JOB_XML_DIR    = &quot;spring/jobs/&quot;;
+    private static final String JOB_XML_SUFFIX = &quot;.xml&quot;;
+
+    // ---------------------------------------------------------------
+    // Entry point
+    // ---------------------------------------------------------------
+
+    public static void main(String[] args) {
+<span class="nc" id="L111">        System.exit(run(args));</span>
+<span class="nc" id="L112">    }</span>
+
+    /** Package-visible so tests can invoke without System.exit. */
+    static int run(String[] args) {
+<span class="fc bfc" id="L116" title="All 2 branches covered.">        if (args.length == 0) {</span>
+<span class="fc" id="L117">            printUsage();</span>
+<span class="fc" id="L118">            return 2;</span>
+        }
+<span class="fc" id="L120">        boolean dryRun   = isDryRun(args);</span>
+<span class="fc" id="L121">        String[] cleaned = stripFlags(args);   // remove --dry-run / --validate</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        if (cleaned.length == 0) {</span>
+<span class="fc" id="L123">            printUsage();</span>
+<span class="fc" id="L124">            return 2;</span>
+        }
+        try {
+<span class="nc" id="L127">            return execute(cleaned, dryRun);</span>
+<span class="fc" id="L128">        } catch (Exception ex) {</span>
+<span class="fc" id="L129">            log.error(&quot;Fatal startup error: {}&quot;, ex.getMessage(), ex);</span>
+<span class="fc" id="L130">            return 2;</span>
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Core execution
+    // ---------------------------------------------------------------
+
+    private static int execute(String[] args, boolean dryRun) throws Exception {
+
+<span class="fc" id="L140">        String input    = args[0];</span>
+<span class="fc" id="L141">        String xmlPath  = resolveXmlPath(input);</span>
+<span class="fc" id="L142">        String beanHint = resolveBeanHint(input, args);   // null = auto-detect</span>
+<span class="fc" id="L143">        int paramStart  = paramStartIndex(input, args);</span>
+<span class="fc" id="L144">        Map&lt;String, String&gt; cliParams = parseCLIParams(args, paramStart);</span>
+
+        // ── Correlation ID: short unique ID threaded through every log line ──
+<span class="fc" id="L147">        String correlationId = UUID.randomUUID().toString()</span>
+<span class="fc" id="L148">                                   .replace(&quot;-&quot;, &quot;&quot;).substring(0, 8).toUpperCase();</span>
+<span class="fc" id="L149">        MDC.put(&quot;correlationId&quot;, correlationId);</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">        MDC.put(&quot;jobName&quot;, beanHint != null ? beanHint : &quot;unknown&quot;);</span>
+
+        try {
+<span class="fc" id="L153">            log.info(&quot;=================================================&quot;);</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">            if (dryRun) log.info(&quot;  *** DRY-RUN MODE — job will NOT execute ***&quot;);</span>
+<span class="fc" id="L155">            log.info(&quot;  Correlation ID : {}&quot;, correlationId);</span>
+<span class="fc" id="L156">            log.info(&quot;  Job XML        : {}&quot;, xmlPath);</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">            log.info(&quot;  Job Bean       : {}&quot;, beanHint != null ? beanHint : &quot;(auto-detect)&quot;);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">            log.info(&quot;  CLI Params     : {}&quot;, cliParams.isEmpty() ? &quot;(none)&quot; : cliParams);</span>
+<span class="fc" id="L159">            log.info(&quot;=================================================&quot;);</span>
+
+            // GenericXmlApplicationContext lets us inject property sources
+            // BEFORE the XML is parsed so ${placeholder} values resolve correctly.
+<span class="fc" id="L163">            try (GenericXmlApplicationContext ctx = new GenericXmlApplicationContext()) {</span>
+
+<span class="fc" id="L165">                enrichEnvironment(ctx.getEnvironment().getPropertySources(), cliParams);</span>
+
+<span class="nc" id="L167">                ctx.load(buildContextFiles(xmlPath));</span>
+<span class="nc" id="L168">                ctx.refresh();</span>
+
+                // Config hash — computed after refresh so all property sources are merged
+<span class="nc" id="L171">                String configHash = computeConfigHash(ctx.getEnvironment().getPropertySources());</span>
+<span class="nc" id="L172">                log.info(&quot;Config hash: {}&quot;, configHash);</span>
+
+<span class="nc bnc" id="L174" title="All 2 branches missed.">                String beanName = (beanHint != null) ? beanHint : autoDetectJobBean(ctx, xmlPath);</span>
+<span class="nc" id="L175">                Job         job = ctx.getBean(beanName, Job.class);</span>
+
+<span class="nc bnc" id="L177" title="All 2 branches missed.">                if (dryRun) {</span>
+<span class="nc" id="L178">                    return executeDryRun(job, beanName, xmlPath, cliParams, correlationId, configHash);</span>
+                }
+
+<span class="nc" id="L181">                JobLauncher launcher = ctx.getBean(&quot;jobLauncher&quot;, JobLauncher.class);</span>
+
+<span class="nc" id="L183">                JobParameters params = buildJobParameters(cliParams, correlationId, configHash);</span>
+<span class="nc" id="L184">                log.info(&quot;Launching '{}' with params: {}&quot;, beanName, params);</span>
+
+<span class="nc" id="L186">                JobExecution exec = launcher.run(job, params);</span>
+<span class="nc" id="L187">                log.info(&quot;Finished '{}' — status={} exit={} correlationId={}&quot;,</span>
+<span class="nc" id="L188">                         beanName, exec.getStatus(), exec.getExitStatus().getExitCode(),</span>
+                         correlationId);
+
+<span class="nc bnc" id="L191" title="All 2 branches missed.">                return exec.getStatus().isUnsuccessful() ? 1 : 0;</span>
+<span class="nc" id="L192">            }</span>
+        } finally {
+<span class="fc" id="L194">            MDC.clear();</span>
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Dry-run validation
+    // ---------------------------------------------------------------
+
+    /**
+     * Validates the job configuration without executing it.
+     *
+     * &lt;ol&gt;
+     *   &lt;li&gt;Context already loaded and refreshed by the caller — all {@code ${placeholder}}
+     *       values are resolved.&lt;/li&gt;
+     *   &lt;li&gt;Runs {@link org.springframework.batch.core.JobParametersValidator} with
+     *       the same parameters that would be used in a real run.&lt;/li&gt;
+     *   &lt;li&gt;Lists every step registered in the job via {@link StepLocator}.&lt;/li&gt;
+     *   &lt;li&gt;Prints a structured PASS / FAIL report to the log.&lt;/li&gt;
+     * &lt;/ol&gt;
+     *
+     * @return 0 if validation passed, 2 if validation failed
+     */
+    private static int executeDryRun(Job job,
+                                     String beanName,
+                                     String xmlPath,
+                                     Map&lt;String, String&gt; cliParams,
+                                     String correlationId,
+                                     String configHash) {
+<span class="nc" id="L222">        String SEP  = &quot;=&quot;.repeat(65);</span>
+<span class="nc" id="L223">        String THIN = &quot;-&quot;.repeat(65);</span>
+
+<span class="nc" id="L225">        log.info(SEP);</span>
+<span class="nc" id="L226">        log.info(&quot;  DRY-RUN VALIDATION REPORT&quot;);</span>
+<span class="nc" id="L227">        log.info(SEP);</span>
+
+<span class="nc" id="L229">        List&lt;String&gt; issues = new ArrayList&lt;&gt;();</span>
+
+        // 1. Context load — already succeeded (we got here), report it
+<span class="nc" id="L232">        log.info(&quot;  [PASS] Spring context loaded from: {}&quot;, xmlPath);</span>
+
+        // 2. Job bean
+<span class="nc" id="L235">        log.info(&quot;  [PASS] Job bean '{}' resolved successfully&quot;, beanName);</span>
+
+        // 3. Config hash — proves placeholders resolved
+<span class="nc" id="L238">        log.info(&quot;  [INFO] Config hash : {}&quot;, configHash);</span>
+<span class="nc" id="L239">        log.info(&quot;  [INFO] Correlation  : {}&quot;, correlationId);</span>
+
+        // 4. Parameter validation
+<span class="nc" id="L242">        log.info(THIN);</span>
+<span class="nc" id="L243">        log.info(&quot;  PARAMETER VALIDATION&quot;);</span>
+<span class="nc" id="L244">        log.info(THIN);</span>
+<span class="nc" id="L245">        JobParameters params = buildJobParameters(cliParams, correlationId, configHash);</span>
+<span class="nc" id="L246">        log.info(&quot;  Parameters supplied: {}&quot;, params);</span>
+        try {
+<span class="nc" id="L248">            job.getJobParametersValidator().validate(params);</span>
+<span class="nc" id="L249">            log.info(&quot;  [PASS] JobParametersValidator — all checks passed&quot;);</span>
+<span class="nc" id="L250">        } catch (JobParametersInvalidException ex) {</span>
+<span class="nc" id="L251">            log.error(&quot;  [FAIL] JobParametersValidator — {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L252">            issues.add(&quot;Parameter validation: &quot; + ex.getMessage());</span>
+<span class="nc" id="L253">        }</span>
+
+        // 5. Step graph — enumerate via StepLocator if supported
+<span class="nc" id="L256">        log.info(THIN);</span>
+<span class="nc" id="L257">        log.info(&quot;  STEP GRAPH&quot;);</span>
+<span class="nc" id="L258">        log.info(THIN);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        if (job instanceof AbstractJob aj) {</span>
+<span class="nc" id="L260">            Collection&lt;String&gt; stepNames = aj.getStepNames();</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">            if (stepNames.isEmpty()) {</span>
+<span class="nc" id="L262">                log.warn(&quot;  [WARN] No steps found in job '{}'&quot;, beanName);</span>
+<span class="nc" id="L263">                issues.add(&quot;No steps registered in job '&quot; + beanName + &quot;'&quot;);</span>
+            } else {
+<span class="nc" id="L265">                int i = 1;</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">                for (String stepName : stepNames) {</span>
+<span class="nc" id="L267">                    log.info(&quot;  [PASS] Step {}: {}&quot;, i++, stepName);</span>
+<span class="nc" id="L268">                }</span>
+            }
+<span class="nc" id="L270">        } else {</span>
+<span class="nc" id="L271">            log.info(&quot;  [INFO] Job type '{}' — step graph not inspectable&quot;, job.getClass().getSimpleName());</span>
+        }
+
+        // 6. Summary
+<span class="nc" id="L275">        log.info(SEP);</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        if (issues.isEmpty()) {</span>
+<span class="nc" id="L277">            log.info(&quot;  RESULT: PASSED — configuration is valid&quot;);</span>
+<span class="nc" id="L278">            log.info(&quot;  Run without --dry-run to execute the job.&quot;);</span>
+        } else {
+<span class="nc" id="L280">            log.error(&quot;  RESULT: FAILED — {} issue(s) found&quot;, issues.size());</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">            for (String issue : issues) {</span>
+<span class="nc" id="L282">                log.error(&quot;    * {}&quot;, issue);</span>
+<span class="nc" id="L283">            }</span>
+        }
+<span class="nc" id="L285">        log.info(SEP);</span>
+
+<span class="nc bnc" id="L287" title="All 2 branches missed.">        return issues.isEmpty() ? 0 : 2;</span>
+    }
+
+    /** Returns {@code true} if any arg is {@code --dry-run} or {@code --validate}. */
+    private static boolean isDryRun(String[] args) {
+<span class="fc bfc" id="L292" title="All 2 branches covered.">        for (String arg : args) {</span>
+<span class="fc bfc" id="L293" title="All 4 branches covered.">            if (&quot;--dry-run&quot;.equalsIgnoreCase(arg) || &quot;--validate&quot;.equalsIgnoreCase(arg)) return true;</span>
+        }
+<span class="fc" id="L295">        return false;</span>
+    }
+
+    /** Returns a copy of {@code args} with all {@code --*} flag tokens removed. */
+    private static String[] stripFlags(String[] args) {
+<span class="fc" id="L300">        List&lt;String&gt; cleaned = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L301" title="All 2 branches covered.">        for (String arg : args) {</span>
+<span class="fc bfc" id="L302" title="All 2 branches covered.">            if (!arg.startsWith(&quot;--&quot;)) cleaned.add(arg);</span>
+        }
+<span class="fc" id="L304">        return cleaned.toArray(new String[0]);</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Property source enrichment
+    // ---------------------------------------------------------------
+
+    /**
+     * Injects additional property sources before context refresh.
+     *
+     * &lt;p&gt;Priority order (lowest → highest within our additions):
+     * &lt;ol&gt;
+     *   &lt;li&gt;Profile file  {@code application-{profile}.properties}  from classpath&lt;/li&gt;
+     *   &lt;li&gt;External override file  {@code -Dapp.config.file=...}&lt;/li&gt;
+     *   &lt;li&gt;CLI {@code key=value} params&lt;/li&gt;
+     * &lt;/ol&gt;
+     * JVM system properties and OS env vars are already at the top of the
+     * Spring environment and are untouched.
+     */
+    private static void enrichEnvironment(MutablePropertySources sources,
+                                          Map&lt;String, String&gt; cliParams) {
+<span class="fc" id="L325">        String lastAdded = null;</span>
+
+        // 1. Profile-specific classpath file (lowest of our additions)
+<span class="fc" id="L328">        String profile = System.getProperty(&quot;app.profile&quot;, &quot;&quot;).trim();</span>
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        if (!profile.isBlank()) {</span>
+<span class="fc" id="L330">            String name  = &quot;application-&quot; + profile + &quot;.properties&quot;;</span>
+<span class="fc" id="L331">            Properties p = loadClasspathProperties(name);</span>
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">            if (!p.isEmpty()) {</span>
+<span class="nc" id="L333">                sources.addLast(new PropertiesPropertySource(&quot;classpath:&quot; + name, p));</span>
+<span class="nc" id="L334">                lastAdded = &quot;classpath:&quot; + name;</span>
+<span class="nc" id="L335">                log.info(&quot;Loaded profile config: {} ({} keys)&quot;, name, p.size());</span>
+            } else {
+<span class="fc" id="L337">                log.warn(&quot;Profile config not found on classpath: {}&quot;, name);</span>
+            }
+        }
+
+        // 2. External override file (-Dapp.config.file=...)
+<span class="fc" id="L342">        String extPath = System.getProperty(&quot;app.config.file&quot;, &quot;&quot;).trim();</span>
+<span class="fc bfc" id="L343" title="All 2 branches covered.">        if (!extPath.isBlank()) {</span>
+<span class="fc" id="L344">            Properties p = loadFileSystemProperties(extPath);</span>
+<span class="fc bfc" id="L345" title="All 2 branches covered.">            if (!p.isEmpty()) {</span>
+<span class="fc" id="L346">                PropertiesPropertySource ps =</span>
+                    new PropertiesPropertySource(&quot;external:&quot; + extPath, p);
+<span class="pc bpc" id="L348" title="1 of 2 branches missed.">                if (lastAdded != null) sources.addBefore(lastAdded, ps);</span>
+<span class="fc" id="L349">                else                   sources.addLast(ps);</span>
+<span class="fc" id="L350">                lastAdded = &quot;external:&quot; + extPath;</span>
+<span class="fc" id="L351">                log.info(&quot;Loaded external config: {} ({} keys)&quot;, extPath, p.size());</span>
+            }
+        }
+
+        // 3. CLI key=value overrides (highest of our additions)
+<span class="fc bfc" id="L356" title="All 2 branches covered.">        if (!cliParams.isEmpty()) {</span>
+<span class="fc" id="L357">            Map&lt;String, Object&gt; cliMap = new LinkedHashMap&lt;&gt;(cliParams);</span>
+<span class="fc" id="L358">            MapPropertySource ps = new MapPropertySource(&quot;cli:params&quot;, cliMap);</span>
+<span class="pc bpc" id="L359" title="1 of 2 branches missed.">            if (lastAdded != null) sources.addBefore(lastAdded, ps);</span>
+<span class="fc" id="L360">            else                   sources.addLast(ps);</span>
+<span class="fc" id="L361">            log.info(&quot;Applied {} CLI param(s) as property overrides.&quot;, cliMap.size());</span>
+        }
+<span class="fc" id="L363">    }</span>
+
+    private static Properties loadClasspathProperties(String name) {
+<span class="fc" id="L366">        ClassPathResource res = new ClassPathResource(name);</span>
+<span class="pc bpc" id="L367" title="1 of 2 branches missed.">        if (!res.exists()) return new Properties();</span>
+<span class="nc" id="L368">        Properties p = new Properties();</span>
+<span class="nc" id="L369">        try (InputStream in = res.getInputStream()) { p.load(in); }</span>
+<span class="nc" id="L370">        catch (IOException e) { log.warn(&quot;Cannot load classpath:{} — {}&quot;, name, e.getMessage()); }</span>
+<span class="nc" id="L371">        return p;</span>
+    }
+
+    private static Properties loadFileSystemProperties(String path) {
+<span class="fc" id="L375">        File file = new File(path);</span>
+<span class="fc bfc" id="L376" title="All 2 branches covered.">        if (!file.exists()) {</span>
+<span class="fc" id="L377">            log.warn(&quot;External config not found: {}&quot;, file.getAbsolutePath());</span>
+<span class="fc" id="L378">            return new Properties();</span>
+        }
+<span class="fc" id="L380">        Properties p = new Properties();</span>
+<span class="fc" id="L381">        try (InputStream in = new FileSystemResource(file).getInputStream()) { p.load(in); }</span>
+<span class="pc" id="L382">        catch (IOException e) { log.warn(&quot;Cannot load {}: {}&quot;, path, e.getMessage()); }</span>
+<span class="fc" id="L383">        return p;</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Slug / path resolution
+    // ---------------------------------------------------------------
+
+    /**
+     * Converts a slug or explicit XML path to a classpath resource path.
+     * &lt;pre&gt;
+     *   &quot;invoice-job&quot;                 → &quot;spring/jobs/invoice-job.xml&quot;
+     *   &quot;spring/jobs/invoice-job.xml&quot; →  unchanged
+     * &lt;/pre&gt;
+     */
+    private static String resolveXmlPath(String input) {
+<span class="fc bfc" id="L398" title="All 2 branches covered.">        if (isExplicitPath(input)) return input;</span>
+<span class="fc" id="L399">        return JOB_XML_DIR + input + JOB_XML_SUFFIX;</span>
+    }
+
+    /**
+     * Derives camelCase bean name from slug, or reads it from args[1].
+     * Returns {@code null} to trigger auto-detection.
+     * &lt;pre&gt;
+     *   &quot;invoice-job&quot;  → &quot;invoiceJob&quot;
+     *   &quot;customer-etl&quot; → &quot;customerEtl&quot;
+     * &lt;/pre&gt;
+     */
+    private static String resolveBeanHint(String input, String[] args) {
+<span class="fc bfc" id="L411" title="All 4 branches covered.">        if (args.length &gt;= 2 &amp;&amp; !args[1].contains(&quot;=&quot;)) return args[1]; // explicit bean name</span>
+<span class="fc bfc" id="L412" title="All 2 branches covered.">        if (!isExplicitPath(input)) return kebabToCamel(input);</span>
+<span class="fc" id="L413">        return null; // explicit path, no hint → auto-detect</span>
+    }
+
+    private static int paramStartIndex(String input, String[] args) {
+<span class="fc bfc" id="L417" title="All 4 branches covered.">        if (args.length &gt;= 2 &amp;&amp; !args[1].contains(&quot;=&quot;)) return 2;</span>
+<span class="fc" id="L418">        return 1;</span>
+    }
+
+    private static boolean isExplicitPath(String s) {
+<span class="fc bfc" id="L422" title="All 4 branches covered.">        return s.endsWith(&quot;.xml&quot;) || s.contains(&quot;/&quot;);</span>
+    }
+
+    /** &quot;invoice-job&quot; → &quot;invoiceJob&quot;,  &quot;customer-etl-v2&quot; → &quot;customerEtlV2&quot; */
+    static String kebabToCamel(String kebab) {
+<span class="fc" id="L427">        String[] parts = kebab.split(&quot;-&quot;);</span>
+<span class="fc bfc" id="L428" title="All 2 branches covered.">        if (parts.length == 1) return parts[0];</span>
+<span class="fc" id="L429">        StringBuilder sb = new StringBuilder(parts[0]);</span>
+<span class="fc bfc" id="L430" title="All 2 branches covered.">        for (int i = 1; i &lt; parts.length; i++) {</span>
+<span class="fc" id="L431">            String part = parts[i];</span>
+<span class="pc bpc" id="L432" title="1 of 2 branches missed.">            if (!part.isEmpty()) {</span>
+<span class="fc" id="L433">                sb.append(Character.toUpperCase(part.charAt(0)));</span>
+<span class="fc" id="L434">                sb.append(part.substring(1));</span>
+            }
+        }
+<span class="fc" id="L437">        return sb.toString();</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Parameter / context helpers
+    // ---------------------------------------------------------------
+
+    private static Map&lt;String, String&gt; parseCLIParams(String[] args, int startIndex) {
+<span class="fc" id="L445">        Map&lt;String, String&gt; params = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L446" title="All 2 branches covered.">        for (int i = startIndex; i &lt; args.length; i++) {</span>
+<span class="fc" id="L447">            int eq = args[i].indexOf('=');</span>
+<span class="pc bpc" id="L448" title="1 of 2 branches missed.">            if (eq &gt; 0) params.put(args[i].substring(0, eq), args[i].substring(eq + 1));</span>
+<span class="nc" id="L449">            else        log.warn(&quot;Ignoring malformed argument (no '='): {}&quot;, args[i]);</span>
+        }
+<span class="fc" id="L451">        return params;</span>
+    }
+
+    private static JobParameters buildJobParameters(Map&lt;String, String&gt; cliParams,
+                                                    String correlationId,
+                                                    String configHash) {
+<span class="nc" id="L457">        JobParametersBuilder b = new JobParametersBuilder()</span>
+<span class="nc" id="L458">                .addLong  (&quot;run.id&quot;,        System.currentTimeMillis())</span>
+<span class="nc" id="L459">                .addString(&quot;correlationId&quot;, correlationId)</span>
+<span class="nc" id="L460">                .addString(&quot;configHash&quot;,    configHash);</span>
+<span class="nc" id="L461">        cliParams.forEach(b::addString);</span>
+<span class="nc" id="L462">        return b.toJobParameters();</span>
+    }
+
+    /**
+     * Computes a short SHA-256 hash of non-sensitive {@code batch.*},
+     * {@code datasource.url}, {@code datasource.username}, and {@code mail.smtp.*}
+     * properties.  Lets you detect config changes between runs.
+     */
+    private static String computeConfigHash(MutablePropertySources sources) {
+<span class="nc" id="L471">        String[] includePrefix   = {&quot;batch.&quot;, &quot;datasource.url&quot;, &quot;datasource.username&quot;,</span>
+                                    &quot;mail.smtp.host&quot;, &quot;mail.smtp.port&quot;};
+<span class="nc" id="L473">        String[] sensitiveTokens = {&quot;password&quot;, &quot;secret&quot;, &quot;key&quot;, &quot;token&quot;, &quot;credential&quot;};</span>
+
+<span class="nc" id="L475">        TreeMap&lt;String, String&gt; snapshot = new TreeMap&lt;&gt;();</span>
+<span class="nc bnc" id="L476" title="All 2 branches missed.">        for (var ps : sources) {</span>
+<span class="nc bnc" id="L477" title="All 2 branches missed.">            if (ps instanceof EnumerablePropertySource&lt;?&gt; eps) {</span>
+<span class="nc bnc" id="L478" title="All 2 branches missed.">                for (String name : eps.getPropertyNames()) {</span>
+<span class="nc" id="L479">                    String lower = name.toLowerCase();</span>
+<span class="nc bnc" id="L480" title="All 2 branches missed.">                    if (!matchesAny(lower, includePrefix)) continue;</span>
+<span class="nc bnc" id="L481" title="All 2 branches missed.">                    if (matchesAny(lower, sensitiveTokens)) continue;</span>
+<span class="nc" id="L482">                    Object val = eps.getProperty(name);</span>
+<span class="nc bnc" id="L483" title="All 2 branches missed.">                    snapshot.putIfAbsent(name, val != null ? val.toString() : &quot;&quot;);</span>
+                }
+            }
+<span class="nc" id="L486">        }</span>
+
+<span class="nc bnc" id="L488" title="All 2 branches missed.">        if (snapshot.isEmpty()) return &quot;NO-CONFIG&quot;;</span>
+
+<span class="nc" id="L490">        StringBuilder content = new StringBuilder();</span>
+<span class="nc" id="L491">        snapshot.forEach((k, v) -&gt; content.append(k).append('=').append(v).append('\n'));</span>
+
+        try {
+<span class="nc" id="L494">            byte[] hash = MessageDigest.getInstance(&quot;SHA-256&quot;)</span>
+<span class="nc" id="L495">                                       .digest(content.toString()</span>
+<span class="nc" id="L496">                                                      .getBytes(StandardCharsets.UTF_8));</span>
+            // Return first 10 hex chars — enough for change detection
+<span class="nc" id="L498">            StringBuilder hex = new StringBuilder();</span>
+<span class="nc bnc" id="L499" title="All 2 branches missed.">            for (int i = 0; i &lt; 5; i++) hex.append(String.format(&quot;%02X&quot;, hash[i]));</span>
+<span class="nc" id="L500">            return hex.toString();</span>
+<span class="nc" id="L501">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L502">            return &quot;HASH-ERR&quot;;</span>
+        }
+    }
+
+    private static boolean matchesAny(String s, String[] tokens) {
+<span class="nc bnc" id="L507" title="All 4 branches missed.">        for (String t : tokens) { if (s.contains(t)) return true; }</span>
+<span class="nc" id="L508">        return false;</span>
+    }
+
+    private static String[] buildContextFiles(String jobXmlPath) {
+<span class="fc" id="L512">        String[] all = Arrays.copyOf(SHARED_XML, SHARED_XML.length + 1);</span>
+<span class="fc" id="L513">        all[all.length - 1] = jobXmlPath;</span>
+<span class="fc" id="L514">        return all;</span>
+    }
+
+    private static String autoDetectJobBean(GenericXmlApplicationContext ctx, String xmlPath) {
+<span class="nc" id="L518">        Map&lt;String, Job&gt; jobs = ctx.getBeansOfType(Job.class);</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">        if (jobs.isEmpty())</span>
+<span class="nc" id="L520">            throw new IllegalStateException(&quot;No Job bean found in context loaded from: &quot; + xmlPath);</span>
+<span class="nc bnc" id="L521" title="All 2 branches missed.">        if (jobs.size() &gt; 1)</span>
+<span class="nc" id="L522">            throw new IllegalStateException(</span>
+<span class="nc" id="L523">                &quot;Multiple Job beans &quot; + jobs.keySet() + &quot; in: &quot; + xmlPath</span>
+                + &quot; — pass the bean name as the second argument.&quot;);
+<span class="nc" id="L525">        String name = jobs.keySet().iterator().next();</span>
+<span class="nc" id="L526">        log.info(&quot;Auto-detected job bean: '{}'&quot;, name);</span>
+<span class="nc" id="L527">        return name;</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Usage
+    // ---------------------------------------------------------------
+
+    private static void printUsage() {
+<span class="fc" id="L535">        System.err.println();</span>
+<span class="fc" id="L536">        System.err.println(&quot;Usage:&quot;);</span>
+<span class="fc" id="L537">        System.err.println(&quot;  java [-Dkey=value ...] -jar app.jar [--dry-run] &lt;job-slug&gt; [key=value ...]&quot;);</span>
+<span class="fc" id="L538">        System.err.println();</span>
+<span class="fc" id="L539">        System.err.println(&quot;Slug convention:&quot;);</span>
+<span class="fc" id="L540">        System.err.println(&quot;  invoice-job   →  spring/jobs/invoice-job.xml  +  bean: invoiceJob&quot;);</span>
+<span class="fc" id="L541">        System.err.println(&quot;  customer-etl  →  spring/jobs/customer-etl.xml +  bean: customerEtl&quot;);</span>
+<span class="fc" id="L542">        System.err.println();</span>
+<span class="fc" id="L543">        System.err.println(&quot;Job parameters (appended after slug):&quot;);</span>
+<span class="fc" id="L544">        System.err.println(&quot;  java -jar app.jar invoice-job  batchDate=2026-01-15  retryMax=3&quot;);</span>
+<span class="fc" id="L545">        System.err.println(&quot;  Available in XML via  #{jobParameters['batchDate']}&quot;);</span>
+<span class="fc" id="L546">        System.err.println(&quot;  Also override any  ${key}  from application.properties&quot;);</span>
+<span class="fc" id="L547">        System.err.println();</span>
+<span class="fc" id="L548">        System.err.println(&quot;Dry-run / validate mode (loads context + validates, no job executed):&quot;);</span>
+<span class="fc" id="L549">        System.err.println(&quot;  java -jar app.jar --dry-run invoice-job  batchDate=2026-01-15&quot;);</span>
+<span class="fc" id="L550">        System.err.println(&quot;  java -jar app.jar --validate invoice-job&quot;);</span>
+<span class="fc" id="L551">        System.err.println(&quot;  Exit 0 = PASSED, 2 = FAILED (context error or param validation failure)&quot;);</span>
+<span class="fc" id="L552">        System.err.println();</span>
+<span class="fc" id="L553">        System.err.println(&quot;Config flags (-D before -jar):&quot;);</span>
+<span class="fc" id="L554">        System.err.println(&quot;  -Dapp.profile=prod              loads classpath:application-prod.properties&quot;);</span>
+<span class="fc" id="L555">        System.err.println(&quot;  -Dapp.config.file=/path/f.props loads an external override file&quot;);</span>
+<span class="fc" id="L556">        System.err.println();</span>
+<span class="fc" id="L557">        System.err.println(&quot;Backward-compat (explicit XML path):&quot;);</span>
+<span class="fc" id="L558">        System.err.println(&quot;  java -jar app.jar spring/jobs/invoice-job.xml invoiceJob batchDate=2026-01-15&quot;);</span>
+<span class="fc" id="L559">        System.err.println();</span>
+<span class="fc" id="L560">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

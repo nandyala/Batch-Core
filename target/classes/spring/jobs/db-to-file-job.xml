@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  db-to-file-job.xml
+  ==================
+  Reads from the CUSTOMER_REPORT view on the SECONDARY (reporting) database
+  and writes a CSV file to the local filesystem.
+
+  Job execution flow
+  ──────────────────
+    exportCustomerReportStep  ──next──►  statisticsAndEmailStep
+       (chunk: DB → CSV)                      (tasklet)
+
+  Required job parameters
+  ───────────────────────
+    batchDate=YYYY-MM-DD   — filters CUSTOMER_REPORT by report_date
+
+  Output
+  ──────
+    ${batch.dbtofile.outputDir}/customer-report-{batchDate}.csv
+
+  Datasource used
+  ───────────────
+    secondaryDataSource — reporting database (read-only)
+    transactionManager  — primary (used by Spring Batch chunk commit only;
+                          no writes to secondary DB in this job)
+
+  Run
+  ───
+    java -jar app.jar db-to-file-job  batchDate=2026-01-15
+    ./db-to-file-job.sh
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/batch
+               https://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <!-- ================================================================
+         Reader — JdbcCursorItemReader on SECONDARY datasource
+         Reads one row at a time via a forward-only cursor.
+         Step-scoped: fresh cursor per execution / restart.
+         ================================================================ -->
+    <bean id="customerReportReader"
+          class="org.springframework.batch.item.database.JdbcCursorItemReader"
+          scope="step">
+        <!-- Read from secondaryDataSource (reporting DB) -->
+        <property name="dataSource" ref="secondaryDataSource"/>
+        <property name="sql">
+            <value>
+                SELECT customer_id,
+                       customer_name,
+                       region,
+                       total_orders,
+                       total_amount,
+                       report_date
+                FROM   CUSTOMER_REPORT
+                WHERE  report_date = CONVERT(date, ?, 23)
+                ORDER  BY region, customer_name
+            </value>
+        </property>
+        <!--
+          Use ArgumentPreparedStatementSetter to bind batchDate as a proper JDBC
+          parameter. This avoids direct SpEL interpolation into the SQL string,
+          which caused SQL Server to evaluate '2026-01-15' as integer arithmetic
+          (2026 - 1 - 15 = 2010) rather than a date literal.
+          format 23 = yyyy-mm-dd (ISO 8601) accepted by CONVERT(date, ?, 23).
+        -->
+        <property name="preparedStatementSetter">
+            <bean class="org.springframework.jdbc.core.ArgumentPreparedStatementSetter">
+                <constructor-arg>
+                    <array>
+                        <value>#{jobParameters['batchDate']}</value>
+                    </array>
+                </constructor-arg>
+            </bean>
+        </property>
+        <property name="rowMapper">
+            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
+        </property>
+        <!-- Fetch rows in batches from the driver rather than one at a time -->
+        <property name="fetchSize" value="${batch.dbtofile.commitInterval:100}"/>
+    </bean>
+
+    <!-- ================================================================
+         Processor — normalise names, round amounts, filter zero-orders
+         ================================================================ -->
+    <bean id="customerReportProcessor"
+          class="com.example.batch.dbtofile.CustomerReportProcessor"
+          scope="step"/>
+
+    <!-- ================================================================
+         Writer — FlatFileItemWriter → CSV
+         Output path uses the batchDate job parameter.
+         BeanWrapperFieldExtractor maps POJO fields → CSV columns.
+         ================================================================ -->
+    <bean id="customerReportWriter"
+          class="org.springframework.batch.item.file.FlatFileItemWriter"
+          scope="step">
+        <property name="resource"
+                  value="file:${batch.dbtofile.outputDir}/customer-report-#{jobParameters['batchDate']}.csv"/>
+        <!-- Overwrite existing file — safe because batchDate is unique per run -->
+        <property name="shouldDeleteIfExists" value="true"/>
+
+        <!-- CSV header written once before any items -->
+        <property name="headerCallback">
+            <bean class="com.example.batch.support.CsvHeaderCallback">
+                <constructor-arg value="customer_id,customer_name,region,total_orders,total_amount,report_date"/>
+            </bean>
+        </property>
+
+        <property name="lineAggregator">
+            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+                <property name="delimiter" value=","/>
+                <property name="fieldExtractor">
+                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+                        <!-- Column order in the output CSV -->
+                        <property name="names"
+                                  value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+    <!-- ================================================================
+         JOB DEFINITION
+         ================================================================ -->
+    <batch:job id="dbToFileJob" restartable="true">
+
+        <batch:validator ref="dbToFileJobParameterValidator"/>
+
+        <batch:listeners>
+            <batch:listener ref="jobStatisticsListener"/>
+        </batch:listeners>
+
+        <!-- ============================================================
+             STEP 1 — Export: DB → CSV
+             Reads from secondary datasource; writes to filesystem.
+             transactionManager (primary) is used only for Batch metadata
+             and chunk commit/rollback bookkeeping.
+             ============================================================ -->
+        <batch:step id="exportCustomerReportStep" next="statisticsAndEmailStep">
+            <batch:tasklet transaction-manager="transactionManager">
+
+                <!--
+                  No retry-limit here by design.
+                  JdbcCursorItemReader holds an open DB cursor — if an error
+                  occurs mid-cursor the connection state is undefined, so retrying
+                  individual items is not safe. Transient DB failures will fail the
+                  entire step, which Spring Batch will restart from the beginning
+                  (restartable="true" on the job).
+                  FlatFileItemWriter is also not retry-able.
+                  Only PERMANENT data errors (bad row from the reporting DB) are
+                  skipped so the rest of the export can continue.
+                -->
+                <batch:chunk reader="customerReportReader"
+                             processor="customerReportProcessor"
+                             writer="customerReportWriter"
+                             commit-interval="${batch.dbtofile.commitInterval:100}"
+                             skip-limit="50">
+
+                    <!-- PERMANENT: bad data from the reporting DB → skip row, continue export -->
+                    <batch:skippable-exception-classes>
+                        <batch:include class="java.lang.IllegalArgumentException"/>
+                        <batch:include class="java.lang.IllegalStateException"/>
+                    </batch:skippable-exception-classes>
+
+                </batch:chunk>
+
+                <batch:listeners>
+                    <batch:listener ref="stepStatisticsListener"/>
+                    <batch:listener ref="stepErrorCollector"/>
+                </batch:listeners>
+
+            </batch:tasklet>
+        </batch:step>
+
+        <!-- STEP 2 (LAST) — Statistics report + email -->
+        <batch:step id="statisticsAndEmailStep">
+            <batch:tasklet ref="statisticsAndEmailTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+    </batch:job>
+
+    <!-- ================================================================
+         Parameter validator — batchDate is required for this job
+         ================================================================ -->
+    <bean id="dbToFileJobParameterValidator"
+          class="com.example.batch.support.BatchJobParameterValidator">
+        <property name="requiredParams">
+            <set>
+                <value>batchDate</value>
+            </set>
+        </property>
+    </bean>
+
+</beans>

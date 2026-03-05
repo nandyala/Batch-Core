@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  file-to-db-job.xml
+  ==================
+  Reads a CSV transaction file from the filesystem and writes records to the
+  TRANSACTION_STAGING table on the PRIMARY database.
+
+  Job execution flow
+  ──────────────────
+    importTransactionsStep  ──next──►  statisticsAndEmailStep
+       (chunk: CSV → DB)                    (tasklet)
+
+  Required job parameters
+  ───────────────────────
+    batchDate=YYYY-MM-DD   — used to build the input file path
+                             (or pass inputFile=/full/path/to/file.csv directly)
+
+  Input file path (in order of preference)
+  ─────────────────────────────────────────
+    1. Pass inputFile=<absolute path> as a job parameter (explicit override)
+    2. Default: ${batch.filetodb.inputDir}/{batchDate}/transactions.csv
+
+  Idempotency (restart safety)
+  ─────────────────────────────
+    The writer uses MERGE (upsert) keyed on transaction_id so re-running
+    the same file does not create duplicate rows.
+
+  Datasource used
+  ───────────────
+    dataSource         — PRIMARY (writes to TRANSACTION_STAGING)
+    transactionManager — PRIMARY
+
+  Run
+  ───
+    java -jar app.jar file-to-db-job  batchDate=2026-01-15
+    ./file-to-db-job.sh
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/batch
+               https://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <!-- ================================================================
+         Reader — FlatFileItemReader
+         Step-scoped: re-reads from the last saved position on restart.
+
+         Input file: use jobParameter 'inputFile' if provided,
+         otherwise default to ${batch.filetodb.inputDir}/{batchDate}/transactions.csv
+         ================================================================ -->
+    <bean id="transactionFileReader"
+          class="org.springframework.batch.item.file.FlatFileItemReader"
+          scope="step">
+        <!--
+          Use SpEL to select:
+            - explicit inputFile job parameter if supplied, OR
+            - default path built from inputDir + batchDate
+        -->
+        <property name="resource"
+                  value="file:#{jobParameters['inputFile'] ?: '${batch.filetodb.inputDir}/' + jobParameters['batchDate'] + '/transactions.csv'}"/>
+
+        <!-- Skip the CSV header row -->
+        <property name="linesToSkip" value="1"/>
+
+        <property name="lineMapper">
+            <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+
+                <property name="lineTokenizer">
+                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+                        <property name="delimiter" value=","/>
+                        <!-- Column names must match TransactionFieldSetMapper expectations -->
+                        <property name="names"
+                                  value="transaction_id,account_number,amount,transaction_type,transaction_date,description"/>
+                    </bean>
+                </property>
+
+                <property name="fieldSetMapper">
+                    <bean class="com.example.batch.filetodb.TransactionFieldSetMapper"/>
+                </property>
+
+            </bean>
+        </property>
+    </bean>
+
+    <!-- ================================================================
+         Processor — validate fields, normalise, filter zero-amounts
+         ================================================================ -->
+    <bean id="transactionProcessor"
+          class="com.example.batch.filetodb.TransactionProcessor"
+          scope="step"/>
+
+    <!-- ================================================================
+         Writer — JdbcBatchItemWriter → TRANSACTION_STAGING (primary DB)
+
+         MERGE upsert ensures idempotency: re-running the same input file
+         updates existing rows instead of throwing a duplicate-key error.
+         ================================================================ -->
+    <bean id="transactionWriter"
+          class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="sql">
+            <value>
+                MERGE INTO TRANSACTION_STAGING AS target
+                USING (SELECT :transactionId AS transaction_id) AS src
+                   ON target.transaction_id = src.transaction_id
+                WHEN MATCHED THEN
+                    UPDATE SET
+                        account_number   = :accountNumber,
+                        amount           = :amount,
+                        transaction_type = :transactionType,
+                        transaction_date = :transactionDate,
+                        description      = :description,
+                        updated_at       = GETDATE()
+                WHEN NOT MATCHED THEN
+                    INSERT (transaction_id, account_number, amount,
+                            transaction_type, transaction_date, description,
+                            created_at, updated_at)
+                    VALUES (:transactionId, :accountNumber, :amount,
+                            :transactionType, :transactionDate, :description,
+                            GETDATE(), GETDATE());
+            </value>
+        </property>
+        <property name="itemSqlParameterSourceProvider">
+            <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+        </property>
+        <!-- Fail the chunk (and retry/skip) on constraint violations -->
+        <property name="assertUpdates" value="false"/>
+    </bean>
+
+    <!-- ================================================================
+         JOB DEFINITION
+         ================================================================ -->
+    <batch:job id="fileToDbJob" restartable="true">
+
+        <batch:validator ref="fileToDbJobParameterValidator"/>
+
+        <batch:listeners>
+            <batch:listener ref="jobStatisticsListener"/>
+        </batch:listeners>
+
+        <!-- ============================================================
+             STEP 1 — Import: CSV → TRANSACTION_STAGING
+             ============================================================ -->
+        <batch:step id="importTransactionsStep" next="statisticsAndEmailStep">
+            <batch:tasklet transaction-manager="transactionManager">
+
+                <batch:chunk reader="transactionFileReader"
+                             processor="transactionProcessor"
+                             writer="transactionWriter"
+                             commit-interval="${batch.filetodb.commitInterval:200}"
+                             skip-limit="100"
+                             retry-limit="3">
+
+                    <!-- PERMANENT: bad data in the file — skip immediately -->
+                    <batch:skippable-exception-classes>
+                        <batch:include class="java.lang.IllegalArgumentException"/>
+                        <batch:include class="java.lang.IllegalStateException"/>
+                        <batch:include class="org.springframework.batch.item.file.FlatFileParseException"/>
+                        <batch:include class="org.springframework.dao.DataIntegrityViolationException"/>
+                        <!-- Transient included so they are skippable after retries exhausted -->
+                        <batch:include class="java.sql.SQLTransientException"/>
+                        <batch:include class="org.springframework.dao.TransientDataAccessException"/>
+                    </batch:skippable-exception-classes>
+
+                    <!-- TRANSIENT: retry DB errors before counting as skip -->
+                    <batch:retryable-exception-classes>
+                        <batch:include class="java.sql.SQLTransientException"/>
+                        <batch:include class="org.springframework.dao.TransientDataAccessException"/>
+                    </batch:retryable-exception-classes>
+
+                </batch:chunk>
+
+                <batch:listeners>
+                    <batch:listener ref="stepStatisticsListener"/>
+                    <batch:listener ref="stepErrorCollector"/>
+                </batch:listeners>
+
+            </batch:tasklet>
+        </batch:step>
+
+        <!-- STEP 2 (LAST) — Statistics report + email -->
+        <batch:step id="statisticsAndEmailStep">
+            <batch:tasklet ref="statisticsAndEmailTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+    </batch:job>
+
+    <!-- ================================================================
+         Parameter validator — batchDate required (inputFile is optional)
+         ================================================================ -->
+    <bean id="fileToDbJobParameterValidator"
+          class="com.example.batch.support.BatchJobParameterValidator">
+        <property name="requiredParams">
+            <set>
+                <value>batchDate</value>
+            </set>
+        </property>
+    </bean>
+
+</beans>

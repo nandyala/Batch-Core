@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- No Spring Boot parent — plain Maven project -->
+    <groupId>com.example</groupId>
+    <artifactId>spring-batch-framework</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Spring Batch Framework</name>
+    <description>XML-based Spring Batch 5 framework — MSSQL, Java 21, no Spring Boot</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Core library versions -->
+        <spring.version>6.1.14</spring.version>
+        <spring.batch.version>5.1.2</spring.batch.version>
+        <mssql.version>12.6.3.jre11</mssql.version>
+        <hikari.version>5.1.0</hikari.version>
+        <angus.mail.version>2.0.3</angus.mail.version>
+        <logback.version>1.5.8</logback.version>
+        <!--
+            Logback 1.5.x requires SLF4J 2.x.
+            HikariCP pulls in slf4j-api 1.7.x transitively, which uses the
+            old StaticLoggerBinder mechanism (removed in SLF4J 2.x).
+            Pinning 2.x here as a direct dependency wins over HikariCP's 1.7.x.
+        -->
+        <slf4j.version>2.0.9</slf4j.version>
+
+        <!-- Test -->
+        <junit.version>5.11.0</junit.version>
+        <h2.version>2.3.232</h2.version>
+
+        <!-- Plugin versions -->
+        <maven.compiler.version>3.13.0</maven.compiler.version>
+        <maven.shade.version>3.5.2</maven.shade.version>
+        <maven.surefire.version>3.3.1</maven.surefire.version>
+        <jacoco.version>0.8.12</jacoco.version>
+
+        <!-- Test library versions -->
+        <mockito.version>5.14.2</mockito.version>
+    </properties>
+
+    <!-- ============================================================
+         Spring Framework BOM — keeps all spring-* versions aligned
+         ============================================================ -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+
+        <!-- ===== Spring Framework ===== -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <!-- JavaMailSenderImpl lives here -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context-support</artifactId>
+        </dependency>
+        <!-- Needed by Spring Batch StaxEventItemReader/Writer -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-oxm</artifactId>
+        </dependency>
+
+        <!-- ===== Spring Batch ===== -->
+        <dependency>
+            <groupId>org.springframework.batch</groupId>
+            <artifactId>spring-batch-core</artifactId>
+            <version>${spring.batch.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.batch</groupId>
+            <artifactId>spring-batch-infrastructure</artifactId>
+            <version>${spring.batch.version}</version>
+        </dependency>
+
+        <!-- ===== MSSQL JDBC ===== -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql.version}</version>
+        </dependency>
+
+        <!-- ===== HikariCP connection pool ===== -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikari.version}</version>
+        </dependency>
+
+        <!-- ===== Jakarta Mail (required by Spring's JavaMailSenderImpl) ===== -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>${angus.mail.version}</version>
+        </dependency>
+
+        <!-- ===== Logging ===== -->
+        <!-- Pin SLF4J 2.x explicitly — beats HikariCP's transitive slf4j-api 1.7.x -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+
+        <!-- ===== Test scope ===== -->
+        <dependency>
+            <groupId>org.springframework.batch</groupId>
+            <artifactId>spring-batch-test</artifactId>
+            <version>${spring.batch.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- H2 in-memory DB — unit tests need no real SQL Server -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>${h2.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Mockito — mocking framework for unit tests -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- Java 21 compiler -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.version}</version>
+                <configuration>
+                    <release>21</release>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+
+            <!-- Fat JAR — bundles all deps + merges Spring XML handler files -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>${maven.shade.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <!-- Exclude signature files from signed JARs to prevent
+                                 "Invalid signature file digest" errors when creating
+                                 the shaded (fat) JAR. -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.example.batch.SpringBatchApplication</mainClass>
+                                </transformer>
+                                <!-- Critical: Spring XML namespace handler merging -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/spring.handlers</resource>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/spring.schemas</resource>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- JUnit 5 runner -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.version}</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
+
+            <!-- JaCoCo — code coverage instrumentation + reporting + enforcement -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <!--
+                        1. prepare-agent: injects the JaCoCo Java agent into the
+                           Surefire JVM so execution data is collected during tests.
+                    -->
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <!--
+                        2. report: generates HTML + XML + CSV coverage reports
+                           in target/site/jacoco/ after tests have run.
+                           Run: mvn verify  (or mvn jacoco:report after test)
+                    -->
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                    <!--
+                        3. check: enforces minimum coverage ratios.
+                           Build fails if thresholds are not met.
+                           Adjust minimums as coverage matures.
+                    -->
+                    <execution>
+                        <id>jacoco-check</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <!-- Instruction coverage: 70% overall -->
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                        <!-- Branch coverage: 60% overall -->
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.60</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <!--
+                                Exclude only classes that genuinely cannot be unit-tested:
+                                SpringBatchApplication requires a full Spring context,
+                                EmailNotificationService requires a live SMTP server.
+                                All job-specific packages now have real unit tests and
+                                are included in the coverage check.
+                            -->
+                            <excludes>
+                                <!-- Main entry point — requires full Spring context -->
+                                <exclude>com/example/batch/SpringBatchApplication.class</exclude>
+                                <!-- HTML email builder — needs live SMTP, no unit-testable logic -->
+                                <exclude>com/example/batch/service/EmailNotificationService.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

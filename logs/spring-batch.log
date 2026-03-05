@@ -1,0 +1,100 @@
+2026-03-05 10:56:39.046 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-05 10:56:39.080 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    -   Correlation ID : 1AA0A0B9
+2026-03-05 10:56:39.082 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    -   Job XML        : spring/jobs/mt-db-to-file-job.xml
+2026-03-05 10:56:39.082 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    -   Job Bean       : mtDbToFileJob
+2026-03-05 10:56:39.082 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    -   CLI Params     : {batchDate=2026-01-15}
+2026-03-05 10:56:39.083 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    - =================================================
+2026-03-05 10:56:39.171 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    - Applied 1 CLI param(s) as property overrides.
+2026-03-05 10:56:39.843 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Starting...
+2026-03-05 10:56:40.529 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - PrimaryPool - Added connection ConnectionID:1 ClientConnectionId: 6e1f180e-9da7-4d13-b78f-0b179f7c4001
+2026-03-05 10:56:40.533 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Start completed.
+2026-03-05 10:56:40.628 [1AA0A0B9] [main] INFO  o.s.b.c.r.s.JobRepositoryFactoryBean - No database type set, using meta data indicating: SQLSERVER
+2026-03-05 10:56:40.958 [1AA0A0B9] [main] WARN  o.s.b.c.s.b.FaultTolerantStepBuilder - Asynchronous TaskExecutor detected with ItemStream reader.  This is probably an error, and may lead to incorrect restart data being stored.
+2026-03-05 10:56:41.046 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    - Config hash: NO-CONFIG
+2026-03-05 10:56:41.053 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    - Launching 'mtDbToFileJob' with params: {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=1AA0A0B9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772726201051, type=class java.lang.Long, identifying=true}'}
+2026-03-05 10:56:41.135 [1AA0A0B9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-05 10:56:41.136 [1AA0A0B9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=1AA0A0B9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772726201051, type=class java.lang.Long, identifying=true}'}
+2026-03-05 10:56:41.201 [1AA0A0B9] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=mtDbToFileJob]] launched with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=1AA0A0B9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772726201051, type=class java.lang.Long, identifying=true}'}]
+2026-03-05 10:56:41.220 [1AA0A0B9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Parameter batchDate validated: 2026-01-15
+2026-03-05 10:56:41.220 [1AA0A0B9] [main] DEBUG c.e.b.s.BatchJobParameterValidator  - Job parameter validation passed. params={'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=1AA0A0B9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772726201051, type=class java.lang.Long, identifying=true}'}
+2026-03-05 10:56:41.241 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-05 10:56:41.242 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB STARTED
+2026-03-05 10:56:41.242 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : mtDbToFileJob
+2026-03-05 10:56:41.242 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 24
+2026-03-05 10:56:41.242 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Parameters   : {'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=1AA0A0B9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772726201051, type=class java.lang.Long, identifying=true}'}
+2026-03-05 10:56:41.242 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-05 10:56:41.274 [1AA0A0B9] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [mtExportCustomerReportStep]
+2026-03-05 10:56:41.290 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step starting: [mtExportCustomerReportStep] ---
+2026-03-05 10:56:41.293 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Starting...
+2026-03-05 10:56:41.559 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.pool.HikariPool   - SecondaryPool - Added connection ConnectionID:3 ClientConnectionId: 5d7b5dae-6045-408d-87b2-a4e8e1fbab6d
+2026-03-05 10:56:41.560 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Start completed.
+2026-03-05 10:56:41.591 [1AA0A0B9] [main] WARN  o.s.b.core.step.item.ChunkMonitor   - No ItemReader set (must be concurrent step), so ignoring offset data.
+2026-03-05 10:56:41.649 [NO_ID] [mt-db-file-3] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C004' — no orders in period
+2026-03-05 10:56:41.650 [NO_ID] [mt-db-file-3] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C008' — no orders in period
+2026-03-05 10:56:41.650 [NO_ID] [mt-db-file-3] DEBUG c.e.b.d.CustomerReportProcessor     - Filtering customer 'SAMPLE-C016' — no orders in period
+2026-03-05 10:56:41.651 [NO_ID] [mt-db-file-4] WARN  o.s.b.core.step.item.ChunkMonitor   - ItemStream was opened in a different thread.  Restart data could be compromised.
+2026-03-05 10:56:41.651 [NO_ID] [mt-db-file-3] WARN  o.s.b.core.step.item.ChunkMonitor   - ItemStream was opened in a different thread.  Restart data could be compromised.
+2026-03-05 10:56:41.661 [NO_ID] [mt-db-file-2] WARN  o.s.b.core.step.item.ChunkMonitor   - ItemStream was opened in a different thread.  Restart data could be compromised.
+2026-03-05 10:56:41.663 [NO_ID] [mt-db-file-1] WARN  o.s.b.core.step.item.ChunkMonitor   - ItemStream was opened in a different thread.  Restart data could be compromised.
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      - --- Step completed: [mtExportCustomerReportStep] ---
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Exit Status : COMPLETED
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Read        : 16
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Written     : 13
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Filtered    : 3
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Skipped     : 0  (read=0 | process=0 | write=0)
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Commits     : 5
+2026-03-05 10:56:41.669 [1AA0A0B9] [main] INFO  c.e.b.l.StepStatisticsListener      -   Rollbacks   : 0
+2026-03-05 10:56:41.671 [1AA0A0B9] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [mtExportCustomerReportStep] executed in 396ms
+2026-03-05 10:56:41.685 [1AA0A0B9] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [renameOutputFileStep]
+2026-03-05 10:56:41.689 [1AA0A0B9] [main] INFO  c.e.batch.tasklet.FileRenameTasklet - Renaming output file: mt-customer-report-2026-01-15.csv.tmp → mt-customer-report-2026-01-15.csv
+2026-03-05 10:56:41.692 [1AA0A0B9] [main] INFO  c.e.batch.tasklet.FileRenameTasklet - Atomic rename succeeded → C:\data\batch\output\mt-customer-report-2026-01-15.csv
+2026-03-05 10:56:41.696 [1AA0A0B9] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [renameOutputFileStep] executed in 11ms
+2026-03-05 10:56:41.707 [1AA0A0B9] [main] INFO  o.s.b.core.job.SimpleStepHandler    - Executing step: [statisticsAndEmailStep]
+2026-03-05 10:56:41.712 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-05 10:56:41.712 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   JOB COMPLETION REPORT
+2026-03-05 10:56:41.712 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-05 10:56:41.712 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Job              : Mt Db To File Job
+2026-03-05 10:56:41.713 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Correlation ID   : 1AA0A0B9
+2026-03-05 10:56:41.713 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Config Hash      : NO-CONFIG
+2026-03-05 10:56:41.713 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Started          : Thu Mar 05 10:56:41 EST 2026
+2026-03-05 10:56:41.718 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Finished         : Thu Mar 05 10:56:41 EST 2026
+2026-03-05 10:56:41.720 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Duration         : 0s
+2026-03-05 10:56:41.720 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Overall Result   : Completed Successfully
+2026-03-05 10:56:41.720 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-05 10:56:41.720 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   STEP BREAKDOWN
+2026-03-05 10:56:41.720 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-05 10:56:41.721 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Mt Export Customer Report  [Completed Successfully]
+2026-03-05 10:56:41.721 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Records Received  : 16
+2026-03-05 10:56:41.721 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Successfully Saved: 13
+2026-03-05 10:56:41.721 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Flagged for Review: 3
+2026-03-05 10:56:41.721 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Errors            : 0
+2026-03-05 10:56:41.721 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Rename Output File  [Completed Successfully]
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Records Received  : 0
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Successfully Saved: 0
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Flagged for Review: 0
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -     Errors            : 0
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   TOTALS
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - -----------------------------------------------------------------
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Records Received  : 16
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Successfully Saved: 13
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Flagged for Review: 3
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   -   Errors            : 0
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - =================================================================
+2026-03-05 10:56:41.722 [1AA0A0B9] [main] INFO  c.e.b.t.StatisticsAndEmailTasklet   - Email reporting is disabled (batch.email.enabled=false) — skipping.
+2026-03-05 10:56:41.743 [1AA0A0B9] [main] INFO  c.e.b.r.JobRunStatsRepository       - Run statistics saved to DB. id=16 correlationId=1AA0A0B9
+2026-03-05 10:56:41.748 [1AA0A0B9] [main] INFO  o.s.batch.core.step.AbstractStep    - Step: [statisticsAndEmailStep] executed in 41ms
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   JOB FINISHED
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Name         : mtDbToFileJob
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Execution ID : 24
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Status       : COMPLETED
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       -   Exit Code    : COMPLETED
+2026-03-05 10:56:41.753 [1AA0A0B9] [main] INFO  c.e.b.l.JobStatisticsListener       - ======================================================
+2026-03-05 10:56:41.760 [1AA0A0B9] [main] INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [FlowJob: [name=mtDbToFileJob]] completed with the following parameters: [{'batchDate':'{value=2026-01-15, type=class java.lang.String, identifying=true}','correlationId':'{value=1AA0A0B9, type=class java.lang.String, identifying=true}','configHash':'{value=NO-CONFIG, type=class java.lang.String, identifying=true}','run.id':'{value=1772726201051, type=class java.lang.Long, identifying=true}'}] and the following status: [COMPLETED] in 533ms
+2026-03-05 10:56:41.760 [1AA0A0B9] [main] INFO  c.e.batch.SpringBatchApplication    - Finished 'mtDbToFileJob' — status=COMPLETED exit=COMPLETED correlationId=1AA0A0B9
+2026-03-05 10:56:41.766 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown initiated...
+2026-03-05 10:56:41.773 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - SecondaryPool - Shutdown completed.
+2026-03-05 10:56:41.773 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown initiated...
+2026-03-05 10:56:41.862 [1AA0A0B9] [main] INFO  com.zaxxer.hikari.HikariDataSource  - PrimaryPool - Shutdown completed.

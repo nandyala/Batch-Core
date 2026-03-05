@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  invoice-job.xml
+  ===============
+  Processes PENDING invoices: reads → validates → writes → reports.
+
+  Job execution flow
+  ──────────────────
+    processInvoicesStep  ──next──►  statisticsAndEmailStep
+          (chunk)                         (tasklet)
+                                    - aggregates all step counts
+                                    - prints log report
+                                    - sends HTML email
+
+  Run with:
+    java -Dapp.profile=dev -jar app.jar invoice-job batchDate=2026-01-15
+
+  To add more business steps before the report step:
+    <batch:step id="step1" next="step2"> ... </batch:step>
+    <batch:step id="step2" next="statisticsAndEmailStep"> ... </batch:step>
+    <batch:step id="statisticsAndEmailStep"> ... </batch:step>
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/batch
+               https://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <!-- ================================================================
+         Reader  (step-scoped)
+         ─────────────────────────────────────────────────────────────────
+         Production replacement — JdbcCursorItemReader:
+
+         <bean id="invoiceReader"
+               class="org.springframework.batch.item.database.JdbcCursorItemReader"
+               scope="step">
+           <property name="dataSource" ref="dataSource"/>
+           <property name="sql"
+                     value="SELECT invoice_id, customer_id, amount,
+                                    invoice_date, status
+                              FROM   INVOICE
+                              WHERE  status = 'PENDING'
+                              ORDER  BY invoice_id"/>
+           <property name="rowMapper">
+             <bean class="com.example.batch.invoice.InvoiceRowMapper"/>
+           </property>
+         </bean>
+         ================================================================ -->
+    <bean id="invoiceReader"
+          class="com.example.batch.invoice.InvoiceItemReader"
+          scope="step"/>
+
+    <!-- ================================================================
+         Processor  (step-scoped)
+         ================================================================ -->
+    <bean id="invoiceProcessor"
+          class="com.example.batch.invoice.InvoiceItemProcessor"
+          scope="step"/>
+
+    <!-- ================================================================
+         Writer  (step-scoped)
+         ─────────────────────────────────────────────────────────────────
+         Production replacement — JdbcBatchItemWriter:
+
+         <bean id="invoiceWriter"
+               class="org.springframework.batch.item.database.JdbcBatchItemWriter"
+               scope="step">
+           <property name="dataSource" ref="dataSource"/>
+           <property name="sql">
+             <value>
+               UPDATE INVOICE
+                  SET status         = :status,
+                      processed_date = GETDATE()
+                WHERE invoice_id     = :invoiceId
+             </value>
+           </property>
+           <property name="itemSqlParameterSourceProvider">
+             <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+           </property>
+         </bean>
+         ================================================================ -->
+    <bean id="invoiceWriter"
+          class="com.example.batch.invoice.InvoiceItemWriter"
+          scope="step"/>
+
+    <!-- ================================================================
+         JOB DEFINITION
+         ================================================================ -->
+
+    <!--
+         Per-job parameter validator — batchDate is REQUIRED for invoice-job.
+         Separate from the shared batchJobParameterValidator so each job can
+         declare its own set of required parameters.
+    -->
+    <bean id="invoiceJobParameterValidator"
+          class="com.example.batch.support.BatchJobParameterValidator">
+        <property name="requiredParams">
+            <set>
+                <value>batchDate</value>
+            </set>
+        </property>
+    </bean>
+
+    <batch:job id="invoiceJob" restartable="true">
+
+        <!-- Parameter validation: batchDate required + yyyy-MM-dd format check -->
+        <batch:validator ref="invoiceJobParameterValidator"/>
+
+        <!-- Job-boundary logging -->
+        <batch:listeners>
+            <batch:listener ref="jobStatisticsListener"/>
+        </batch:listeners>
+
+        <!-- ============================================================
+             STEP 1 — Process invoices (chunk-oriented)
+
+             Idempotency note: the production JdbcBatchItemWriter should
+             use MERGE (upsert) rather than INSERT to be rerun-safe:
+
+               MERGE INTO INVOICE_PROCESSED AS target
+               USING (VALUES (:invoiceId, :status, :processedDate))
+                     AS src (invoice_id, status, processed_date)
+               ON target.invoice_id = src.invoice_id
+               WHEN MATCHED     THEN UPDATE SET status = src.status, ...
+               WHEN NOT MATCHED THEN INSERT (invoice_id, status, ...) VALUES (...);
+
+             Restartability: Spring Batch saves the read cursor position to
+             BATCH_STEP_EXECUTION_CONTEXT after each committed chunk, so a
+             failed job restarted with the same parameters continues from
+             the last commit point rather than re-reading from the start.
+             ============================================================ -->
+        <batch:step id="processInvoicesStep" next="statisticsAndEmailStep">
+            <batch:tasklet transaction-manager="transactionManager">
+
+                <batch:chunk reader="invoiceReader"
+                             processor="invoiceProcessor"
+                             writer="invoiceWriter"
+                             commit-interval="${batch.invoice.commitInterval:10}"
+                             skip-limit="10"
+                             retry-limit="3">
+
+                    <!-- PERMANENT: skip immediately — data/logic errors -->
+                    <batch:skippable-exception-classes>
+                        <batch:include class="java.lang.IllegalArgumentException"/>
+                        <batch:include class="java.lang.IllegalStateException"/>
+                        <batch:include class="org.springframework.dao.DataIntegrityViolationException"/>
+                        <!-- Also include transient so they can be skipped after retry exhaustion -->
+                        <batch:include class="java.sql.SQLTransientException"/>
+                        <batch:include class="org.springframework.dao.TransientDataAccessException"/>
+                    </batch:skippable-exception-classes>
+
+                    <!-- TRANSIENT: retry up to retry-limit before skipping -->
+                    <batch:retryable-exception-classes>
+                        <batch:include class="java.sql.SQLTransientException"/>
+                        <batch:include class="org.springframework.dao.TransientDataAccessException"/>
+                    </batch:retryable-exception-classes>
+
+                </batch:chunk>
+
+                <!-- stepStatisticsListener: logs counts after each step -->
+                <!-- stepErrorCollector: captures skip events to ExecutionContext -->
+                <batch:listeners>
+                    <batch:listener ref="stepStatisticsListener"/>
+                    <batch:listener ref="stepErrorCollector"/>
+                </batch:listeners>
+
+            </batch:tasklet>
+        </batch:step>
+
+        <!-- ============================================================
+             STEP 2 (LAST) — Statistics report + email
+             Always keep this as the final step.
+             ============================================================ -->
+        <batch:step id="statisticsAndEmailStep">
+            <batch:tasklet ref="statisticsAndEmailTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+    </batch:job>
+
+</beans>

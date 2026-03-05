@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BatchJobParameterValidator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.support</a> &gt; <span class="el_source">BatchJobParameterValidator.java</span></div><h1>BatchJobParameterValidator.java</h1><pre class="source lang-java linenums">package com.example.batch.support;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.JobParametersValidator;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Collections;
+import java.util.Set;
+
+/**
+ * Deterministic parameter validation for Spring Batch jobs.
+ *
+ * &lt;h3&gt;Built-in validation rules&lt;/h3&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;&lt;b&gt;Required params&lt;/b&gt; — configurable set of parameter names that
+ *       must be present; throws if any are missing.&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;batchDate&lt;/b&gt; — if present, must be {@code yyyy-MM-dd} format.&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;h3&gt;XML wiring — shared validator (no required params)&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * &lt;!-- in batch-listeners.xml --&gt;
+ * &lt;bean id=&quot;batchJobParameterValidator&quot;
+ *       class=&quot;com.example.batch.support.BatchJobParameterValidator&quot;/&gt;
+ * }&lt;/pre&gt;
+ *
+ * &lt;h3&gt;XML wiring — per-job validator with required params&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * &lt;!-- in invoice-job.xml --&gt;
+ * &lt;bean id=&quot;invoiceJobParameterValidator&quot;
+ *       class=&quot;com.example.batch.support.BatchJobParameterValidator&quot;&gt;
+ *   &lt;property name=&quot;requiredParams&quot;&gt;
+ *     &lt;set&gt;
+ *       &lt;value&gt;batchDate&lt;/value&gt;
+ *     &lt;/set&gt;
+ *   &lt;/property&gt;
+ * &lt;/bean&gt;
+ *
+ * &lt;batch:job id=&quot;invoiceJob&quot; restartable=&quot;true&quot;&gt;
+ *   &lt;batch:validator ref=&quot;invoiceJobParameterValidator&quot;/&gt;
+ *   ...
+ * &lt;/batch:job&gt;
+ * }&lt;/pre&gt;
+ *
+ * &lt;p&gt;No Spring annotations — wired entirely via XML.
+ */
+<span class="fc" id="L52">public class BatchJobParameterValidator implements JobParametersValidator {</span>
+
+<span class="fc" id="L54">    private static final Logger log = LoggerFactory.getLogger(BatchJobParameterValidator.class);</span>
+
+<span class="fc" id="L56">    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;);</span>
+
+    /** Parameter names that MUST be present — injected via XML. */
+<span class="fc" id="L59">    private Set&lt;String&gt; requiredParams = Collections.emptySet();</span>
+
+    // ---------------------------------------------------------------
+    // JobParametersValidator
+    // ---------------------------------------------------------------
+
+    @Override
+    public void validate(JobParameters parameters) throws JobParametersInvalidException {
+
+        // 1. Required parameter presence check
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        for (String name : requiredParams) {</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">            if (parameters.getString(name) == null) {</span>
+<span class="fc" id="L71">                throw new JobParametersInvalidException(</span>
+                    &quot;Missing required job parameter: '&quot; + name + &quot;'. &quot;
+                    + &quot;Pass it on the command line: java -jar app.jar &lt;job&gt; &quot; + name + &quot;=&lt;value&gt;&quot;);
+            }
+<span class="fc" id="L75">        }</span>
+
+        // 2. batchDate format validation (if present)
+<span class="fc" id="L78">        String batchDate = parameters.getString(&quot;batchDate&quot;);</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        if (batchDate != null) {</span>
+            try {
+<span class="fc" id="L81">                LocalDate parsed = LocalDate.parse(batchDate, DATE_FMT);</span>
+<span class="fc" id="L82">                log.debug(&quot;Parameter batchDate validated: {}&quot;, parsed);</span>
+<span class="fc" id="L83">            } catch (DateTimeParseException e) {</span>
+<span class="fc" id="L84">                throw new JobParametersInvalidException(</span>
+                    &quot;Invalid batchDate value '&quot; + batchDate + &quot;'. &quot;
+                    + &quot;Expected format: yyyy-MM-dd (e.g. 2026-01-15)&quot;);
+<span class="fc" id="L87">            }</span>
+        }
+
+<span class="fc" id="L90">        log.debug(&quot;Job parameter validation passed. params={}&quot;, parameters);</span>
+<span class="fc" id="L91">    }</span>
+
+    // ---------------------------------------------------------------
+    // Setter — called by Spring XML &lt;property&gt; injection
+    // ---------------------------------------------------------------
+
+    public void setRequiredParams(Set&lt;String&gt; requiredParams) {
+<span class="fc" id="L98">        this.requiredParams = requiredParams;</span>
+<span class="fc" id="L99">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

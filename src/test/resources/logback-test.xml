@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  logback-test.xml
+  ================
+  Minimal logging configuration for unit tests.
+  Suppresses verbose Spring/Batch framework output so test
+  results are readable. All application code is set to WARN
+  to avoid polluting the test console with expected log output
+  from tests that intentionally trigger error paths.
+-->
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %-40logger{40} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Suppress all application logging during tests
+         (tests verify behavior, not log output) -->
+    <logger name="com.example.batch" level="WARN"/>
+
+    <!-- Suppress Spring / Batch framework noise -->
+    <logger name="org.springframework"       level="ERROR"/>
+    <logger name="org.springframework.batch" level="ERROR"/>
+    <logger name="com.zaxxer.hikari"         level="ERROR"/>
+    <logger name="com.h2database"            level="ERROR"/>
+
+    <root level="ERROR">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

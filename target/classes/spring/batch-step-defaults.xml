@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  batch-step-defaults.xml
+  =======================
+  Reusable building blocks shared by all job XML files.
+  Loaded automatically for every job via SpringBatchApplication.SHARED_XML.
+
+  Contents
+  ────────
+  1. abstractStepTaskExecutor
+     Abstract parent bean for ThreadPoolTaskExecutor.
+     Multi-threaded job XMLs extend this — they only need to set
+     corePoolSize, maxPoolSize, and threadNamePrefix.
+
+  HOW TO ADD A NEW MULTI-THREADED JOB EXECUTOR
+  ─────────────────────────────────────────────
+  In your job XML file, declare:
+
+    <bean id="myJobTaskExecutor" parent="abstractStepTaskExecutor">
+        <property name="corePoolSize"    value="${batch.myjob.threadCount:4}"/>
+        <property name="maxPoolSize"     value="${batch.myjob.threadCount:4}"/>
+        <property name="threadNamePrefix" value="my-job-"/>
+    </bean>
+
+  Wire it to your step:
+
+    <batch:tasklet task-executor="myJobTaskExecutor" ...>
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- ================================================================
+         Abstract TaskExecutor parent — shared by all multi-threaded steps.
+
+         Enforced defaults:
+           queueCapacity = 0      → SynchronousQueue: no unbounded task queue.
+                                    If all threads are busy the step's main
+                                    thread processes the next chunk itself
+                                    (CallerRunsPolicy), which provides natural
+                                    backpressure without dropping work.
+
+           rejectedExecutionHandler = CallerRunsPolicy
+                                    → Graceful backpressure instead of
+                                      RejectedExecutionException.
+
+         Job XML only needs to supply:
+           corePoolSize / maxPoolSize  (same value = fixed pool)
+           threadNamePrefix            (visible in log MDC + thread dumps)
+         ================================================================ -->
+    <bean id="abstractStepTaskExecutor"
+          class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor"
+          abstract="true"
+          destroy-method="shutdown">
+        <property name="queueCapacity" value="0"/>
+        <property name="rejectedExecutionHandler">
+            <bean class="java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy"/>
+        </property>
+    </bean>
+
+</beans>

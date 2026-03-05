@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InvoiceRecord.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.invoice</a> &gt; <span class="el_source">InvoiceRecord.java</span></div><h1>InvoiceRecord.java</h1><pre class="source lang-java linenums">package com.example.batch.invoice;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * Domain object representing a single invoice to be processed.
+ * Replace / extend fields to match your actual INVOICE table schema.
+ */
+public class InvoiceRecord {
+
+    private long        invoiceId;
+    private String      customerId;
+    private BigDecimal  amount;
+    private LocalDate   invoiceDate;
+    private String      status;        // e.g. PENDING, PROCESSED, FAILED
+
+<span class="fc" id="L18">    public InvoiceRecord() {}</span>
+
+    public InvoiceRecord(long invoiceId, String customerId,
+<span class="fc" id="L21">                         BigDecimal amount, LocalDate invoiceDate, String status) {</span>
+<span class="fc" id="L22">        this.invoiceId   = invoiceId;</span>
+<span class="fc" id="L23">        this.customerId  = customerId;</span>
+<span class="fc" id="L24">        this.amount      = amount;</span>
+<span class="fc" id="L25">        this.invoiceDate = invoiceDate;</span>
+<span class="fc" id="L26">        this.status      = status;</span>
+<span class="fc" id="L27">    }</span>
+
+<span class="fc" id="L29">    public long       getInvoiceId()               { return invoiceId; }</span>
+<span class="fc" id="L30">    public void       setInvoiceId(long v)          { this.invoiceId = v; }</span>
+
+<span class="fc" id="L32">    public String     getCustomerId()               { return customerId; }</span>
+<span class="fc" id="L33">    public void       setCustomerId(String v)       { this.customerId = v; }</span>
+
+<span class="fc" id="L35">    public BigDecimal getAmount()                   { return amount; }</span>
+<span class="fc" id="L36">    public void       setAmount(BigDecimal v)       { this.amount = v; }</span>
+
+<span class="fc" id="L38">    public LocalDate  getInvoiceDate()              { return invoiceDate; }</span>
+<span class="fc" id="L39">    public void       setInvoiceDate(LocalDate v)   { this.invoiceDate = v; }</span>
+
+<span class="fc" id="L41">    public String     getStatus()                   { return status; }</span>
+<span class="fc" id="L42">    public void       setStatus(String v)           { this.status = v; }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L46">        return &quot;InvoiceRecord{id=&quot; + invoiceId</span>
+               + &quot;, customer=&quot; + customerId
+               + &quot;, amount=&quot; + amount
+               + &quot;, status=&quot; + status + &quot;}&quot;;
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

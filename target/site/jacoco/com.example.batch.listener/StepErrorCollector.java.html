@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StepErrorCollector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.listener</a> &gt; <span class="el_source">StepErrorCollector.java</span></div><h1>StepErrorCollector.java</h1><pre class="source lang-java linenums">package com.example.batch.listener;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
+import org.springframework.batch.core.listener.SkipListenerSupport;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Captures skip events per step and stores them in the step's
+ * {@code ExecutionContext} under key {@value #ERRORS_KEY}.
+ *
+ * &lt;p&gt;Implements both {@link StepExecutionListener} (to capture the current
+ * step reference in {@code beforeStep}) and {@link SkipListenerSupport}
+ * (to record each skipped item and its exception).
+ *
+ * &lt;p&gt;The stored {@code List&lt;String&gt;} is capped at {@value #MAX_ERRORS} entries
+ * so the execution context stays compact.  The
+ * {@link com.example.batch.tasklet.StatisticsAndEmailTasklet} reads this list
+ * after all steps finish and includes the errors in the log + email report.
+ *
+ * &lt;h3&gt;XML wiring (in batch-listeners.xml)&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * &lt;bean id=&quot;stepErrorCollector&quot;
+ *       class=&quot;com.example.batch.listener.StepErrorCollector&quot;/&gt;
+ * }&lt;/pre&gt;
+ *
+ * &lt;h3&gt;Usage in any chunk step&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * &lt;batch:tasklet ...&gt;
+ *   &lt;batch:chunk ...&gt;
+ *     &lt;batch:skippable-exception-classes&gt;...&lt;/batch:skippable-exception-classes&gt;
+ *     &lt;batch:retryable-exception-classes&gt;...&lt;/batch:retryable-exception-classes&gt;
+ *   &lt;/batch:chunk&gt;
+ *   &lt;batch:listeners&gt;
+ *     &lt;batch:listener ref=&quot;stepStatisticsListener&quot;/&gt;
+ *     &lt;batch:listener ref=&quot;stepErrorCollector&quot;/&gt;
+ *   &lt;/batch:listeners&gt;
+ * &lt;/batch:tasklet&gt;
+ * }&lt;/pre&gt;
+ *
+ * &lt;p&gt;No Spring annotations — wired via XML.
+ */
+<span class="fc" id="L48">public class StepErrorCollector extends SkipListenerSupport&lt;Object, Object&gt;</span>
+        implements StepExecutionListener {
+
+<span class="fc" id="L51">    private static final Logger log = LoggerFactory.getLogger(StepErrorCollector.class);</span>
+
+    /** Key used in {@code StepExecution.getExecutionContext()} to store the error list. */
+    public static final String ERRORS_KEY = &quot;step.errors&quot;;
+
+    /** Maximum number of error messages stored per step (keeps the context compact). */
+    public static final int MAX_ERRORS = 10;
+
+    /**
+     * Holds the current step's execution — set in {@link #beforeStep}.
+     * Safe for synchronous (non-parallel) job execution.
+     */
+    private StepExecution stepExecution;
+
+    // ---------------------------------------------------------------
+    // StepExecutionListener
+    // ---------------------------------------------------------------
+
+    @Override
+    public void beforeStep(StepExecution stepExecution) {
+<span class="fc" id="L71">        this.stepExecution = stepExecution;</span>
+<span class="fc" id="L72">    }</span>
+
+    @Override
+    public ExitStatus afterStep(StepExecution stepExecution) {
+<span class="fc" id="L76">        return null; // do not override step exit status</span>
+    }
+
+    // ---------------------------------------------------------------
+    // SkipListenerSupport  (override only the three onSkipIn* methods)
+    // ---------------------------------------------------------------
+
+    @Override
+    public void onSkipInRead(Throwable t) {
+<span class="fc" id="L85">        record(&quot;Read skip — &quot; + classify(t) + &quot;: &quot; + summarize(t));</span>
+<span class="fc" id="L86">    }</span>
+
+    @Override
+    public void onSkipInProcess(Object item, Throwable t) {
+<span class="fc" id="L90">        record(&quot;Process skip — &quot; + classify(t) + &quot;: &quot; + summarize(t));</span>
+<span class="fc" id="L91">    }</span>
+
+    @Override
+    public void onSkipInWrite(Object item, Throwable t) {
+<span class="fc" id="L95">        record(&quot;Write skip — &quot; + classify(t) + &quot;: &quot; + summarize(t));</span>
+<span class="fc" id="L96">    }</span>
+
+    // ---------------------------------------------------------------
+    // Internal helpers
+    // ---------------------------------------------------------------
+
+    private void record(String message) {
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        if (stepExecution == null) return;</span>
+
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L106">        List&lt;String&gt; errors = (List&lt;String&gt;) stepExecution.getExecutionContext().get(ERRORS_KEY);</span>
+
+<span class="fc bfc" id="L108" title="All 2 branches covered.">        if (errors == null) {</span>
+<span class="fc" id="L109">            errors = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L110">            stepExecution.getExecutionContext().put(ERRORS_KEY, errors);</span>
+        }
+
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (errors.size() &lt; MAX_ERRORS) {</span>
+<span class="fc" id="L114">            errors.add(message);</span>
+<span class="fc" id="L115">            log.warn(&quot;[{}] {}&quot;, stepExecution.getStepName(), message);</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">        } else if (errors.size() == MAX_ERRORS) {</span>
+<span class="fc" id="L117">            errors.add(&quot;... (further errors suppressed — see full logs)&quot;);</span>
+        }
+<span class="fc" id="L119">    }</span>
+
+    /**
+     * Classifies an exception as TRANSIENT or PERMANENT for the error message.
+     * Transient = might succeed on retry; Permanent = always fails for this item.
+     */
+    private static String classify(Throwable t) {
+<span class="fc bfc" id="L126" title="All 4 branches covered.">        if (t instanceof java.sql.SQLTransientException</span>
+                || t instanceof org.springframework.dao.TransientDataAccessException) {
+<span class="fc" id="L128">            return &quot;TRANSIENT&quot;;</span>
+        }
+<span class="fc" id="L130">        return &quot;PERMANENT&quot;;</span>
+    }
+
+    private static String summarize(Throwable t) {
+<span class="fc" id="L134">        String msg = t.getMessage();</span>
+<span class="fc bfc" id="L135" title="All 4 branches covered.">        String text = (msg != null &amp;&amp; !msg.isBlank()) ? msg : &quot;(no message)&quot;;</span>
+        // Truncate long messages (e.g. SQL errors with full stack details)
+<span class="fc" id="L137">        return t.getClass().getSimpleName() + &quot; — &quot;</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">               + (text.length() &gt; 150 ? text.substring(0, 150) + &quot;…&quot; : text);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  mt-db-to-file-job.xml
+  =====================
+  Multi-threaded variant of db-to-file-job.
+  Reads from CUSTOMER_REPORT on the secondary (reporting) database using a
+  thread-safe JdbcPagingItemReader and writes to a CSV file using a
+  SynchronizedItemStreamWriter wrapping FlatFileItemWriter.
+
+  Key design decisions
+  ─────────────────────
+  1. JdbcPagingItemReader (not JdbcCursorItemReader)
+     A cursor is a single forward-only ResultSet — not thread-safe.
+     The paging reader fetches independent pages, so each thread can
+     safely call read() and receive its own exclusive page of rows.
+
+  2. SynchronizedItemStreamWriter wrapping FlatFileItemWriter
+     FlatFileItemWriter is not thread-safe (single shared file channel +
+     internal position tracking). Wrapping it with SynchronizedItemStreamWriter
+     serialises all write() calls so threads do not interleave output lines.
+     NOTE: row order in the output file is non-deterministic — threads
+     complete chunks at different times. Sort the file downstream if needed.
+
+  3. parameterValues on JdbcPagingItemReader
+     The batchDate WHERE clause uses a named parameter (:batchDate) bound via
+     the parameterValues map. This avoids the string-interpolation bug where
+     SpEL inserts a bare date value that SQL Server evaluates as arithmetic.
+
+  Job execution flow
+  ──────────────────
+    mtExportCustomerReportStep  ──next──►  statisticsAndEmailStep
+       (multi-threaded chunk)                   (tasklet)
+
+  Required job parameters
+  ───────────────────────
+    batchDate=YYYY-MM-DD
+
+  Output
+  ──────
+    ${batch.dbtofile.outputDir}/mt-customer-report-{batchDate}.csv
+
+  Run
+  ───
+    java -jar app.jar mt-db-to-file-job  batchDate=2026-01-15
+    ./mt-db-to-file-job.sh
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/batch
+               https://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <!-- ================================================================
+         Paging query provider — SQL Server dialect auto-selected.
+         Uses named parameter :batchDate in the WHERE clause.
+         Singleton: shared safely across threads (read-only metadata).
+         ================================================================ -->
+    <bean id="mtCustomerReportQueryProvider"
+          class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+        <property name="dataSource"    ref="secondaryDataSource"/>
+        <property name="selectClause"  value="SELECT customer_id, customer_name, region, total_orders, total_amount, report_date"/>
+        <property name="fromClause"    value="FROM CUSTOMER_REPORT"/>
+        <!--
+          Named parameter :batchDate is bound via the reader's parameterValues map.
+          CONVERT(date, :batchDate, 23) uses format 23 = yyyy-mm-dd (ISO 8601).
+        -->
+        <property name="whereClause"   value="WHERE report_date = CONVERT(date, :batchDate, 23)"/>
+        <!--
+          sortKey MUST be unique and indexed.
+          All threads page against the same sort key so results are deterministic
+          even across concurrent reads.
+        -->
+        <property name="sortKey"       value="customer_id"/>
+    </bean>
+
+    <!-- ================================================================
+         Reader — JdbcPagingItemReader (thread-safe)
+         Step-scoped: each step execution gets its own reader state.
+         parameterValues wires job parameter batchDate into the WHERE clause.
+         ================================================================ -->
+    <bean id="mtCustomerReportReader"
+          class="org.springframework.batch.item.database.JdbcPagingItemReader"
+          scope="step">
+        <property name="dataSource"     ref="secondaryDataSource"/>
+        <property name="queryProvider"  ref="mtCustomerReportQueryProvider"/>
+        <property name="pageSize"       value="${batch.mtdbtofile.pageSize:100}"/>
+        <!-- Bind :batchDate named parameter from job parameters -->
+        <property name="parameterValues">
+            <map>
+                <entry key="batchDate" value="#{jobParameters['batchDate']}"/>
+            </map>
+        </property>
+        <property name="rowMapper">
+            <!-- Reuse the same row mapper as the single-threaded db-to-file-job -->
+            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
+        </property>
+        <!--
+          saveState=false: multi-threaded steps cannot checkpoint per-thread
+          reader positions reliably. Disabling state-saving prevents the reader
+          from registering with ChunkMonitor, which eliminates the
+          "ItemStream was opened in a different thread" warning.
+          On restart the paging reader simply re-queries from page 1.
+        -->
+        <property name="saveState" value="false"/>
+    </bean>
+
+    <!-- ================================================================
+         Processor — stateless; safe to share across all chunk threads
+         ================================================================ -->
+    <bean id="mtCustomerReportProcessor"
+          class="com.example.batch.dbtofile.CustomerReportProcessor"/>
+
+    <!-- ================================================================
+         Writer (delegate) — FlatFileItemWriter
+         Step-scoped: needs access to job parameters for output path.
+         NOT used directly by the step — the SynchronizedItemStreamWriter
+         below wraps it and is wired to the chunk instead.
+         ================================================================ -->
+    <bean id="mtCustomerReportFileWriter"
+          class="org.springframework.batch.item.file.FlatFileItemWriter"
+          scope="step">
+        <property name="resource"
+                  value="file:${batch.dbtofile.outputDir}/mt-customer-report-#{jobParameters['batchDate']}.csv.tmp"/>
+        <property name="shouldDeleteIfExists" value="true"/>
+        <property name="headerCallback">
+            <bean class="com.example.batch.dbtofile.CustomerReportHeaderCallback"/>
+        </property>
+        <property name="lineAggregator">
+            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+                <property name="delimiter" value=","/>
+                <property name="fieldExtractor">
+                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+                        <property name="names"
+                                  value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+        <!--
+  saveState=false: multi-threaded steps cannot checkpoint per-thread
+  reader positions reliably. Disabling state-saving prevents the reader
+  from registering with ChunkMonitor, which eliminates the
+  "ItemStream was opened in a different thread" warning.
+  On restart the paging reader simply re-queries from page 1.
+-->
+        <property name="saveState" value="false"/>
+    </bean>
+
+    <!-- ================================================================
+         Writer (thread-safe wrapper) — SynchronizedItemStreamWriter
+         Serialises all write() calls so concurrent chunk threads cannot
+         interleave lines. The delegate (FlatFileItemWriter) is step-scoped
+         so it is resolved through the step scope proxy correctly.
+         Step-scoped here so open()/close() lifecycle hooks are honoured.
+         ================================================================ -->
+    <bean id="mtCustomerReportSyncWriter"
+          class="org.springframework.batch.item.support.SynchronizedItemStreamWriter"
+          scope="step">
+        <property name="delegate" ref="mtCustomerReportFileWriter"/>
+    </bean>
+
+    <!-- ================================================================
+         Thread pool — inherits queueCapacity=0 + CallerRunsPolicy from
+         abstractStepTaskExecutor (defined in batch-step-defaults.xml).
+         ================================================================ -->
+    <bean id="mtDbToFileTaskExecutor" parent="abstractStepTaskExecutor">
+        <property name="corePoolSize"     value="${batch.mtdbtofile.threadCount:4}"/>
+        <property name="maxPoolSize"      value="${batch.mtdbtofile.threadCount:4}"/>
+        <property name="threadNamePrefix" value="mt-db-file-"/>
+    </bean>
+
+    <bean id="renameFileTasklet"
+          class="com.example.batch.tasklet.FileRenameTasklet"
+          scope="step">
+        <property name="outputDir" value="${batch.dbtofile.outputDir}"/>
+        <property name="batchDate" value="#{jobParameters['batchDate']}"/>
+    </bean>
+    <!-- ================================================================
+         JOB DEFINITION
+         ================================================================ -->
+    <batch:job id="mtDbToFileJob" restartable="true">
+
+        <batch:validator ref="mtDbToFileJobParameterValidator"/>
+
+        <batch:listeners>
+            <batch:listener ref="jobStatisticsListener"/>
+        </batch:listeners>
+
+        <!-- ============================================================
+             STEP 1 — Multi-threaded export: DB → CSV
+             task-executor enables concurrent chunk processing.
+             ============================================================ -->
+        <batch:step id="mtExportCustomerReportStep" next="renameOutputFileStep">
+            <batch:tasklet transaction-manager="transactionManager"
+                           task-executor="mtDbToFileTaskExecutor">
+
+                <batch:chunk reader="mtCustomerReportReader"
+                             processor="mtCustomerReportProcessor"
+                             writer="mtCustomerReportSyncWriter"
+                             commit-interval="${batch.mtdbtofile.commitInterval:100}"
+                             skip-limit="50">
+
+                    <!-- PERMANENT: bad data from the reporting DB -->
+                    <batch:skippable-exception-classes>
+                        <batch:include class="java.lang.IllegalArgumentException"/>
+                        <batch:include class="java.lang.IllegalStateException"/>
+                    </batch:skippable-exception-classes>
+
+                </batch:chunk>
+
+                <batch:listeners>
+                    <batch:listener ref="stepStatisticsListener"/>
+                    <batch:listener ref="stepErrorCollector"/>
+                </batch:listeners>
+
+            </batch:tasklet>
+        </batch:step>
+
+        <batch:step id="renameOutputFileStep" next="statisticsAndEmailStep">
+            <batch:tasklet ref="renameFileTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+
+        <!-- STEP 2 (LAST) — Statistics report + email -->
+        <batch:step id="statisticsAndEmailStep">
+            <batch:tasklet ref="statisticsAndEmailTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+    </batch:job>
+
+    <!-- ================================================================
+         Parameter validator
+         ================================================================ -->
+    <bean id="mtDbToFileJobParameterValidator"
+          class="com.example.batch.support.BatchJobParameterValidator">
+        <property name="requiredParams">
+            <set>
+                <value>batchDate</value>
+            </set>
+        </property>
+    </bean>
+
+</beans>

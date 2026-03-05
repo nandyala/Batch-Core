@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  partitioned-db-to-file-job.xml
+  ==============================
+  Partitioned variant of db-to-file-job.
+  Reads from CUSTOMER_REPORT on the secondary (reporting) database, splits the
+  work across N independent worker steps by customer id range, and writes each
+  partition to its own output CSV file.
+
+  Architecture: PARTITIONED STEP  (vs. multi-threaded chunk)
+  ─────────────────────────────────────────────────────────────
+  Multi-threaded step        │  Partitioned step (this job)
+  ───────────────────────────┼──────────────────────────────────────────
+  One StepExecution          │  One StepExecution per partition
+  Shared reader (needs sync) │  Independent reader per partition — no sync
+  Shared writer (needs sync) │  Independent writer per partition — no sync
+  Non-deterministic order    │  Each partition output is ordered by its range
+  Restart: re-reads all      │  Restart: only failed partitions re-execute
+
+  Key design decisions
+  ─────────────────────
+  1. ColumnRangePartitioner
+     Queries MIN / MAX of the id column (optionally filtered by batchDate),
+     then divides the range into gridSize equal ID-range buckets.
+     Each bucket's minId / maxId is stored in the partition's ExecutionContext.
+
+  2. JdbcCursorItemReader per worker (thread-safe here)
+     Unlike a multi-threaded step where one reader is shared by all threads,
+     a partitioned step creates one reader bean instance per partition
+     (step-scoped beans are resolved fresh for each StepExecution).
+     Each reader opens its own cursor over its exclusive ID range — no
+     synchronisation is needed.
+
+  3. FlatFileItemWriter per worker (thread-safe here)
+     Each worker writes to its own partition file:
+       partitioned-customer-report-{batchDate}-p{partitionNumber}.csv
+     No SynchronizedItemStreamWriter is needed. Output is ordered within
+     each partition file.
+
+  4. TaskExecutorPartitionHandler
+     Dispatches worker steps to the thread pool. The manager step blocks
+     until all workers complete or one fails.
+
+  5. Restart safety
+     restartable="true": any partition whose StepExecution is FAILED or
+     STOPPED will be re-executed on the next run. Completed partitions
+     are skipped automatically by Spring Batch.
+
+  Job execution flow
+  ──────────────────
+    partitionManagerStep  ──next──►  statisticsAndEmailStep
+     (manager + N workers)               (tasklet)
+
+  Output files
+  ─────────────
+    ${batch.partitioned.outputDir}/partitioned-customer-report-{batchDate}-p0.csv
+    ${batch.partitioned.outputDir}/partitioned-customer-report-{batchDate}-p1.csv
+    ... (one file per partition)
+
+  Required job parameters
+  ───────────────────────
+    batchDate=YYYY-MM-DD
+
+  Run
+  ───
+    java -jar app.jar partitioned-db-to-file-job  batchDate=2026-01-15
+    ./partitioned-db-to-file-job.sh
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+               https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/batch
+               https://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <!-- ================================================================
+         Partitioner — splits CUSTOMER_REPORT by id range
+         Step-scoped: evaluated once per manager step execution so
+         jobParameters['batchDate'] resolves correctly via SpEL.
+         ================================================================ -->
+    <bean id="customerReportPartitioner"
+          class="com.example.batch.support.ColumnRangePartitioner"
+          scope="step">
+        <property name="dataSource"   ref="secondaryDataSource"/>
+        <property name="table"        value="CUSTOMER_REPORT"/>
+        <property name="column"       value="id"/>
+        <!--
+          Filter to only the rows for today's batch date so that the id-range
+          bounds (MIN/MAX) are tight and partitions are evenly sized.
+          Uses ISO format 23 (yyyy-mm-dd) — avoids integer-arithmetic bug.
+
+          SpEL note: single quotes around 'batchDate' inside #{...} are standard
+          SpEL string-literal syntax. No double-escaping is needed here because
+          the enclosing XML attribute uses double quotes.
+        -->
+        <property name="whereClause"
+                  value="report_date = CONVERT(date, '#{jobParameters['batchDate']}', 23)"/>
+    </bean>
+
+    <!-- ================================================================
+         Partition handler — local multi-threaded execution
+         gridSize controls how many worker StepExecutions are created.
+         Each worker runs on its own thread from partitionedTaskExecutor.
+         The manager blocks until ALL workers finish.
+         ================================================================ -->
+    <bean id="partitionedCustomerReportHandler"
+          class="org.springframework.batch.core.partition.support.TaskExecutorPartitionHandler">
+        <property name="taskExecutor" ref="partitionedTaskExecutor"/>
+        <property name="step"         ref="partitionedCustomerReportWorkerStep"/>
+        <property name="gridSize"     value="${batch.partitioned.gridSize:4}"/>
+    </bean>
+
+    <!-- ================================================================
+         Worker reader — JdbcCursorItemReader (safe per partition)
+         Step-scoped: a fresh instance is created for every partition's
+         StepExecution. Each instance opens its own JDBC cursor on the
+         secondary (reporting) database, reading only its ID range.
+         No SynchronizedItemStreamReader needed — each worker is isolated.
+         ================================================================ -->
+    <bean id="partitionedCustomerReportReader"
+          class="org.springframework.batch.item.database.JdbcCursorItemReader"
+          scope="step">
+        <property name="dataSource" ref="secondaryDataSource"/>
+        <property name="sql">
+            <value>
+                SELECT customer_id, customer_name, region,
+                       total_orders, total_amount, report_date
+                FROM   CUSTOMER_REPORT
+                WHERE  id BETWEEN #{stepExecutionContext['minId']}
+                                AND #{stepExecutionContext['maxId']}
+                  AND  report_date = CONVERT(date, '#{jobParameters['batchDate']}', 23)
+                ORDER  BY customer_id
+            </value>
+        </property>
+        <property name="rowMapper">
+            <bean class="com.example.batch.dbtofile.CustomerReportRowMapper"/>
+        </property>
+    </bean>
+
+    <!-- ================================================================
+         Worker processor — stateless; safe to share across partition threads
+         ================================================================ -->
+    <bean id="partitionedCustomerReportProcessor"
+          class="com.example.batch.dbtofile.CustomerReportProcessor"/>
+
+    <!-- ================================================================
+         Worker writer — FlatFileItemWriter (safe per partition)
+         Step-scoped: each partition writes to its OWN output file, keyed
+         by partitionNumber from the ExecutionContext.
+         No SynchronizedItemStreamWriter needed.
+         ================================================================ -->
+    <bean id="partitionedCustomerReportWriter"
+          class="org.springframework.batch.item.file.FlatFileItemWriter"
+          scope="step">
+        <property name="resource"
+                  value="file:${batch.partitioned.outputDir}/partitioned-customer-report-#{jobParameters['batchDate']}-p#{stepExecutionContext['partitionNumber']}.csv"/>
+        <property name="shouldDeleteIfExists" value="true"/>
+        <property name="headerCallback">
+            <bean class="com.example.batch.dbtofile.CustomerReportHeaderCallback"/>
+        </property>
+        <property name="lineAggregator">
+            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+                <property name="delimiter" value=","/>
+                <property name="fieldExtractor">
+                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+                        <property name="names"
+                                  value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+    <!-- ================================================================
+         Thread pool — one thread per partition (up to gridSize).
+         Inherits queueCapacity=0 + CallerRunsPolicy from abstractStepTaskExecutor.
+         ================================================================ -->
+    <bean id="partitionedTaskExecutor" parent="abstractStepTaskExecutor">
+        <property name="corePoolSize"     value="${batch.partitioned.gridSize:4}"/>
+        <property name="maxPoolSize"      value="${batch.partitioned.gridSize:4}"/>
+        <property name="threadNamePrefix" value="partition-worker-"/>
+    </bean>
+
+    <!-- ================================================================
+         JOB DEFINITION
+         ================================================================ -->
+    <batch:job id="partitionedDbToFileJob" restartable="true">
+
+        <batch:validator ref="partitionedDbToFileJobParameterValidator"/>
+
+        <batch:listeners>
+            <batch:listener ref="jobStatisticsListener"/>
+        </batch:listeners>
+
+        <!-- ============================================================
+             STEP 1 — Manager step: partitions the work and dispatches
+             N worker steps (one per id-range bucket) to the thread pool.
+             ============================================================ -->
+        <batch:step id="partitionManagerStep" next="statisticsAndEmailStep">
+            <batch:partition
+                    step="partitionedCustomerReportWorkerStep"
+                    partitioner="customerReportPartitioner"
+                    handler="partitionedCustomerReportHandler"/>
+            <batch:listeners>
+                <batch:listener ref="stepStatisticsListener"/>
+            </batch:listeners>
+        </batch:step>
+
+        <!-- STEP 2 (LAST) — Statistics report + email -->
+        <batch:step id="statisticsAndEmailStep">
+            <batch:tasklet ref="statisticsAndEmailTasklet"
+                           transaction-manager="transactionManager"/>
+        </batch:step>
+
+    </batch:job>
+
+    <!-- ================================================================
+         Worker step definition (referenced by the partition handler).
+         Defined outside the job so the TaskExecutorPartitionHandler can
+         look it up by name from the ApplicationContext.
+         ================================================================ -->
+    <batch:step id="partitionedCustomerReportWorkerStep">
+        <batch:tasklet transaction-manager="transactionManager">
+
+            <batch:chunk reader="partitionedCustomerReportReader"
+                         processor="partitionedCustomerReportProcessor"
+                         writer="partitionedCustomerReportWriter"
+                         commit-interval="${batch.partitioned.commitInterval:100}"
+                         skip-limit="50">
+
+                <!-- PERMANENT: bad data in the reporting DB -->
+                <batch:skippable-exception-classes>
+                    <batch:include class="java.lang.IllegalArgumentException"/>
+                    <batch:include class="java.lang.IllegalStateException"/>
+                    <batch:include class="org.springframework.dao.DataIntegrityViolationException"/>
+                </batch:skippable-exception-classes>
+
+            </batch:chunk>
+
+            <batch:listeners>
+                <batch:listener ref="stepErrorCollector"/>
+            </batch:listeners>
+
+        </batch:tasklet>
+    </batch:step>
+
+    <!-- ================================================================
+         Parameter validator
+         ================================================================ -->
+    <bean id="partitionedDbToFileJobParameterValidator"
+          class="com.example.batch.support.BatchJobParameterValidator">
+        <property name="requiredParams">
+            <set>
+                <value>batchDate</value>
+            </set>
+        </property>
+    </bean>
+
+</beans>

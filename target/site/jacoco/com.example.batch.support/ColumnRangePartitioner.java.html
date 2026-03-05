@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ColumnRangePartitioner.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.support</a> &gt; <span class="el_source">ColumnRangePartitioner.java</span></div><h1>ColumnRangePartitioner.java</h1><pre class="source lang-java linenums">package com.example.batch.support;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.partition.support.Partitioner;
+import org.springframework.batch.item.ExecutionContext;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Generic {@link Partitioner} that splits a table into ID-range partitions.
+ *
+ * &lt;p&gt;Queries {@code MIN} and {@code MAX} of a numeric column, then divides
+ * the range into {@code gridSize} equal partitions. Each partition receives
+ * three values in its {@link ExecutionContext}:
+ * &lt;ul&gt;
+ *   &lt;li&gt;{@code minId} — inclusive lower bound ({@code long})&lt;/li&gt;
+ *   &lt;li&gt;{@code maxId} — inclusive upper bound ({@code long})&lt;/li&gt;
+ *   &lt;li&gt;{@code partitionNumber} — zero-based index ({@code int})&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * &lt;h3&gt;Usage in a partitioned step reader&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * WHERE id BETWEEN #{stepExecutionContext['minId']}
+ *               AND #{stepExecutionContext['maxId']}
+ * }&lt;/pre&gt;
+ *
+ * &lt;h3&gt;XML configuration&lt;/h3&gt;
+ * &lt;pre&gt;{@code
+ * &lt;bean id=&quot;myPartitioner&quot;
+ *       class=&quot;com.example.batch.support.ColumnRangePartitioner&quot;
+ *       scope=&quot;step&quot;&gt;
+ *     &lt;property name=&quot;dataSource&quot; ref=&quot;dataSource&quot;/&gt;
+ *     &lt;property name=&quot;table&quot;      value=&quot;CUSTOMER_REPORT&quot;/&gt;
+ *     &lt;property name=&quot;column&quot;     value=&quot;id&quot;/&gt;
+ *     &lt;!-- optional: restrict the rows being partitioned --&gt;
+ *     &lt;property name=&quot;whereClause&quot;
+ *               value=&quot;report_date = CONVERT(date, #{jobParameters['batchDate']}, 23)&quot;/&gt;
+ * &lt;/bean&gt;
+ * }&lt;/pre&gt;
+ *
+ * &lt;h3&gt;Edge cases&lt;/h3&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;If the table is empty (MIN/MAX returns NULL) a single empty partition
+ *       is returned — the worker step reads zero rows.&lt;/li&gt;
+ *   &lt;li&gt;If the range is smaller than {@code gridSize}, fewer partitions are
+ *       created (one per row at most).&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L53">public class ColumnRangePartitioner implements Partitioner {</span>
+
+<span class="fc" id="L55">    private static final Logger log = LoggerFactory.getLogger(ColumnRangePartitioner.class);</span>
+
+    private JdbcTemplate jdbcTemplate;
+    private String       table;
+    private String       column;
+<span class="fc" id="L60">    private String       whereClause = &quot;&quot;;</span>
+
+    // ---------------------------------------------------------------
+    // Setters
+    // ---------------------------------------------------------------
+
+    public void setDataSource(DataSource dataSource) {
+<span class="fc" id="L67">        this.jdbcTemplate = new JdbcTemplate(dataSource);</span>
+<span class="fc" id="L68">    }</span>
+
+    /** Table name (unqualified or schema-qualified, e.g. {@code dbo.CUSTOMER_REPORT}). */
+<span class="fc" id="L71">    public void setTable(String table)             { this.table = table; }</span>
+
+    /** Numeric column to partition by (e.g. {@code id}). Must be indexed. */
+<span class="fc" id="L74">    public void setColumn(String column)           { this.column = column; }</span>
+
+    /**
+     * Optional SQL WHERE clause (without the {@code WHERE} keyword) to restrict
+     * the rows being partitioned, e.g. {@code report_date = '2026-01-15'}.
+     */
+<span class="fc" id="L80">    public void setWhereClause(String whereClause) { this.whereClause = whereClause; }</span>
+
+    // ---------------------------------------------------------------
+    // Partitioner
+    // ---------------------------------------------------------------
+
+    @Override
+    public Map&lt;String, ExecutionContext&gt; partition(int gridSize) {
+
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        String filter  = whereClause.isBlank() ? &quot;&quot; : &quot; WHERE &quot; + whereClause;</span>
+<span class="fc" id="L90">        String minSql  = &quot;SELECT MIN(&quot; + column + &quot;) FROM &quot; + table + filter;</span>
+<span class="fc" id="L91">        String maxSql  = &quot;SELECT MAX(&quot; + column + &quot;) FROM &quot; + table + filter;</span>
+
+<span class="fc" id="L93">        Long minValue = jdbcTemplate.queryForObject(minSql, Long.class);</span>
+<span class="fc" id="L94">        Long maxValue = jdbcTemplate.queryForObject(maxSql, Long.class);</span>
+
+<span class="fc" id="L96">        Map&lt;String, ExecutionContext&gt; partitions = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="pc bpc" id="L98" title="1 of 4 branches missed.">        if (minValue == null || maxValue == null) {</span>
+<span class="fc" id="L99">            log.warn(&quot;Table '{}' has no rows matching filter '{}' — returning one empty partition&quot;, table, filter);</span>
+<span class="fc" id="L100">            ExecutionContext ctx = new ExecutionContext();</span>
+<span class="fc" id="L101">            ctx.putLong(&quot;minId&quot;, 0L);</span>
+<span class="fc" id="L102">            ctx.putLong(&quot;maxId&quot;, -1L);        // impossible range → reader returns nothing</span>
+<span class="fc" id="L103">            ctx.putInt (&quot;partitionNumber&quot;, 0);</span>
+<span class="fc" id="L104">            partitions.put(&quot;partition0&quot;, ctx);</span>
+<span class="fc" id="L105">            return partitions;</span>
+        }
+
+<span class="fc" id="L108">        long range      = maxValue - minValue;</span>
+        // Ensure at least 1 row per partition; cap actual partitions at gridSize
+<span class="fc" id="L110">        int  actual     = (int) Math.min(gridSize, range + 1);</span>
+<span class="fc" id="L111">        long targetSize = (range / actual) + 1;</span>
+
+<span class="fc" id="L113">        log.info(&quot;Partitioning {}.{}: min={} max={} range={} gridSize={} actualPartitions={} targetSize={}&quot;,</span>
+<span class="fc" id="L114">                 table, column, minValue, maxValue, range, gridSize, actual, targetSize);</span>
+
+<span class="fc" id="L116">        long start = minValue;</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        for (int i = 0; i &lt; actual; i++) {</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">            if (start &gt; maxValue) break;  // all rows already covered by earlier partitions</span>
+            // Cap intermediate partition end at maxValue so no partition exceeds the
+            // filtered range (important when a WHERE clause limits the min/max bounds).
+<span class="fc bfc" id="L121" title="All 2 branches covered.">            long end = (i == actual - 1) ? maxValue : Math.min(start + targetSize - 1, maxValue);</span>
+
+<span class="fc" id="L123">            ExecutionContext ctx = new ExecutionContext();</span>
+<span class="fc" id="L124">            ctx.putLong(&quot;minId&quot;,           start);</span>
+<span class="fc" id="L125">            ctx.putLong(&quot;maxId&quot;,           end);</span>
+<span class="fc" id="L126">            ctx.putInt (&quot;partitionNumber&quot;, i);</span>
+
+<span class="fc" id="L128">            String key = &quot;partition&quot; + i;</span>
+<span class="fc" id="L129">            partitions.put(key, ctx);</span>
+<span class="fc" id="L130">            log.debug(&quot;  {} → [{}, {}]&quot;, key, start, end);</span>
+
+<span class="fc" id="L132">            start = end + 1;</span>
+        }
+
+<span class="fc" id="L135">        return partitions;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

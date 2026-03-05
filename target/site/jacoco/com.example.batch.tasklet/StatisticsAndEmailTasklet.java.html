@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatisticsAndEmailTasklet.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Spring Batch Framework</a> &gt; <a href="index.source.html" class="el_package">com.example.batch.tasklet</a> &gt; <span class="el_source">StatisticsAndEmailTasklet.java</span></div><h1>StatisticsAndEmailTasklet.java</h1><pre class="source lang-java linenums">package com.example.batch.tasklet;
+
+import com.example.batch.listener.StepErrorCollector;
+import com.example.batch.model.JobStatistics;
+import com.example.batch.repository.JobRunStatsRepository;
+import com.example.batch.service.EmailNotificationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.repeat.RepeatStatus;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Reusable final-step Tasklet that:
+ * &lt;ol&gt;
+ *   &lt;li&gt;Aggregates read / write / skip / filter counts from all preceding steps.&lt;/li&gt;
+ *   &lt;li&gt;Prints a formatted statistics report to the application log.&lt;/li&gt;
+ *   &lt;li&gt;Sends an HTML email report via {@link EmailNotificationService}.&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;h3&gt;Adding to any job (XML snippet)&lt;/h3&gt;
+ * &lt;pre&gt;
+ *   &amp;lt;!-- statisticsAndEmailTasklet bean is declared in batch-listeners.xml --&amp;gt;
+ *
+ *   &amp;lt;batch:job id=&quot;myJob&quot;&amp;gt;
+ *     &amp;lt;batch:step id=&quot;step1&quot; next=&quot;statisticsAndEmailStep&quot;&amp;gt; ... &amp;lt;/batch:step&amp;gt;
+ *     &amp;lt;batch:step id=&quot;step2&quot; next=&quot;statisticsAndEmailStep&quot;&amp;gt; ... &amp;lt;/batch:step&amp;gt;
+ *
+ *     &amp;lt;!-- Always the last step --&amp;gt;
+ *     &amp;lt;batch:step id=&quot;statisticsAndEmailStep&quot;&amp;gt;
+ *       &amp;lt;batch:tasklet ref=&quot;statisticsAndEmailTasklet&quot;
+ *                      transaction-manager=&quot;transactionManager&quot;/&amp;gt;
+ *     &amp;lt;/batch:step&amp;gt;
+ *   &amp;lt;/batch:job&amp;gt;
+ * &lt;/pre&gt;
+ *
+ * &lt;p&gt;No Spring annotations — all wiring done through XML.
+ */
+<span class="fc" id="L46">public class StatisticsAndEmailTasklet implements Tasklet {</span>
+
+<span class="fc" id="L48">    private static final Logger log = LoggerFactory.getLogger(StatisticsAndEmailTasklet.class);</span>
+<span class="fc" id="L49">    private static final String LINE = &quot;=&quot;.repeat(65);</span>
+<span class="fc" id="L50">    private static final String THIN = &quot;-&quot;.repeat(65);</span>
+
+    /** Injected via XML. Set to {@code null} to disable email silently. */
+    private EmailNotificationService emailNotificationService;
+
+    /** Email recipient — injected via XML {@code &lt;property&gt;}. */
+    private String reportToEmail;
+
+    /**
+     * Feature flag — injected via {@code batch.email.enabled} property.
+     * Defaults to {@code true}. Set to {@code false} to skip email (log report still runs).
+     */
+<span class="fc" id="L62">    private boolean emailEnabled = true;</span>
+
+    /**
+     * Optional — persists run stats to DB for 7-day history.
+     * Injected via XML; {@code null} = skip DB persistence silently.
+     */
+    private JobRunStatsRepository jobRunStatsRepository;
+
+    // ---------------------------------------------------------------
+    // Tasklet
+    // ---------------------------------------------------------------
+
+    @Override
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
+
+<span class="fc" id="L77">        StepExecution currentStep = chunkContext.getStepContext().getStepExecution();</span>
+
+        // Aggregate counts from all preceding business steps (exclude this one)
+<span class="fc" id="L80">        JobStatistics stats = buildStatistics(currentStep);</span>
+
+        // 1. Print full report to log
+<span class="fc" id="L83">        printStatisticsToLog(stats);</span>
+
+        // 2. Send HTML email — errors are caught so the job still COMPLETED
+<span class="fc" id="L86">        sendEmail(stats);</span>
+
+        // 3. Persist run summary to DB (7-day retention)
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        if (jobRunStatsRepository != null) {</span>
+<span class="fc" id="L90">            jobRunStatsRepository.save(stats);</span>
+        }
+
+<span class="fc" id="L93">        return RepeatStatus.FINISHED;</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Statistics aggregation
+    // ---------------------------------------------------------------
+
+    private JobStatistics buildStatistics(StepExecution currentStep) {
+<span class="fc" id="L101">        var jobExecution  = currentStep.getJobExecution();</span>
+<span class="fc" id="L102">        var jobParams     = jobExecution.getJobParameters();</span>
+<span class="fc" id="L103">        String thisStep   = currentStep.getStepName();</span>
+
+<span class="fc" id="L105">        JobStatistics stats = new JobStatistics();</span>
+<span class="fc" id="L106">        stats.setJobName(jobExecution.getJobInstance().getJobName());</span>
+<span class="fc" id="L107">        stats.setJobExecutionId(jobExecution.getId());</span>
+<span class="fc" id="L108">        stats.setBatchStatus(jobExecution.getStatus());   // STARTED at this point</span>
+<span class="fc" id="L109">        stats.setExitStatus(jobExecution.getExitStatus());</span>
+<span class="fc" id="L110">        stats.setStartTime(toDate(jobExecution.getStartTime()));</span>
+<span class="fc" id="L111">        stats.setEndTime(new Date());  // &quot;now&quot; — job hasn't officially ended yet</span>
+
+        // Observability fields from job parameters (set by SpringBatchApplication)
+<span class="fc" id="L114">        stats.setCorrelationId(jobParams.getString(&quot;correlationId&quot;, &quot;N/A&quot;));</span>
+<span class="fc" id="L115">        stats.setConfigHash   (jobParams.getString(&quot;configHash&quot;,    &quot;N/A&quot;));</span>
+
+<span class="fc" id="L117">        long totalRead = 0, totalWrite = 0, totalSkip = 0, totalFilter = 0;</span>
+<span class="fc" id="L118">        long totalReadSkip = 0, totalProcessSkip = 0, totalWriteSkip = 0;</span>
+
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        for (StepExecution step : jobExecution.getStepExecutions()) {</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">            if (step.getStepName().equals(thisStep)) continue; // exclude self</span>
+
+<span class="fc" id="L123">            long rSkip = step.getReadSkipCount();</span>
+<span class="fc" id="L124">            long pSkip = step.getProcessSkipCount();</span>
+<span class="fc" id="L125">            long wSkip = step.getWriteSkipCount();</span>
+
+<span class="fc" id="L127">            totalRead        += step.getReadCount();</span>
+<span class="fc" id="L128">            totalWrite       += step.getWriteCount();</span>
+<span class="fc" id="L129">            totalSkip        += step.getSkipCount();</span>
+<span class="fc" id="L130">            totalFilter      += step.getFilterCount();</span>
+<span class="fc" id="L131">            totalReadSkip    += rSkip;</span>
+<span class="fc" id="L132">            totalProcessSkip += pSkip;</span>
+<span class="fc" id="L133">            totalWriteSkip   += wSkip;</span>
+
+            // Collect errors captured by StepErrorCollector for this step
+            @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L137">            List&lt;String&gt; stepErrors = (List&lt;String&gt;)</span>
+<span class="fc" id="L138">                    step.getExecutionContext().get(StepErrorCollector.ERRORS_KEY);</span>
+
+<span class="fc" id="L140">            stats.getStepStats().add(new JobStatistics.StepStats(</span>
+<span class="fc" id="L141">                    step.getStepName(),</span>
+<span class="fc" id="L142">                    step.getReadCount(),</span>
+<span class="fc" id="L143">                    step.getWriteCount(),</span>
+<span class="fc" id="L144">                    step.getSkipCount(),</span>
+<span class="fc" id="L145">                    step.getFilterCount(),</span>
+                    rSkip, pSkip, wSkip,
+<span class="fc" id="L147">                    step.getExitStatus(),</span>
+                    stepErrors));
+
+            // Roll up step errors into job-level error list
+<span class="fc bfc" id="L151" title="All 2 branches covered.">            if (stepErrors != null) {</span>
+<span class="fc" id="L152">                stats.getErrors().addAll(stepErrors);</span>
+            }
+<span class="fc" id="L154">        }</span>
+
+<span class="fc" id="L156">        stats.setTotalReadCount(totalRead);</span>
+<span class="fc" id="L157">        stats.setTotalWriteCount(totalWrite);</span>
+<span class="fc" id="L158">        stats.setTotalSkipCount(totalSkip);</span>
+<span class="fc" id="L159">        stats.setTotalFilterCount(totalFilter);</span>
+<span class="fc" id="L160">        stats.setTotalReadSkipCount(totalReadSkip);</span>
+<span class="fc" id="L161">        stats.setTotalProcessSkipCount(totalProcessSkip);</span>
+<span class="fc" id="L162">        stats.setTotalWriteSkipCount(totalWriteSkip);</span>
+
+<span class="fc" id="L164">        return stats;</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Log report
+    // ---------------------------------------------------------------
+
+    private void printStatisticsToLog(JobStatistics stats) {
+<span class="fc" id="L172">        log.info(LINE);</span>
+<span class="fc" id="L173">        log.info(&quot;  JOB COMPLETION REPORT&quot;);</span>
+<span class="fc" id="L174">        log.info(LINE);</span>
+<span class="fc" id="L175">        log.info(&quot;  Job              : {}&quot;, EmailNotificationService.humanizeJobName(stats.getJobName()));</span>
+<span class="fc" id="L176">        log.info(&quot;  Correlation ID   : {}&quot;, stats.getCorrelationId());</span>
+<span class="fc" id="L177">        log.info(&quot;  Config Hash      : {}&quot;, stats.getConfigHash());</span>
+<span class="fc" id="L178">        log.info(&quot;  Started          : {}&quot;, stats.getStartTime());</span>
+<span class="fc" id="L179">        log.info(&quot;  Finished         : {}&quot;, stats.getEndTime());</span>
+<span class="fc" id="L180">        log.info(&quot;  Duration         : {}&quot;, stats.getFormattedDuration());</span>
+<span class="fc" id="L181">        log.info(&quot;  Overall Result   : {}&quot;, friendlyStatus(stats.getComputedStatus()));</span>
+<span class="fc" id="L182">        log.info(THIN);</span>
+
+<span class="fc bfc" id="L184" title="All 2 branches covered.">        if (stats.getStepStats().isEmpty()) {</span>
+<span class="fc" id="L185">            log.info(&quot;  No steps recorded.&quot;);</span>
+        } else {
+<span class="fc" id="L187">            log.info(&quot;  STEP BREAKDOWN&quot;);</span>
+<span class="fc" id="L188">            log.info(THIN);</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">            for (JobStatistics.StepStats s : stats.getStepStats()) {</span>
+<span class="fc" id="L190">                log.info(&quot;  {}  [{}]&quot;,</span>
+<span class="fc" id="L191">                         EmailNotificationService.humanizeStepName(s.getStepName()),</span>
+<span class="fc" id="L192">                         friendlyStatus(s.getExitStatus().getExitCode()));</span>
+<span class="fc" id="L193">                log.info(&quot;    Records Received  : {}&quot;, s.getReadCount());</span>
+<span class="fc" id="L194">                log.info(&quot;    Successfully Saved: {}&quot;, s.getWriteCount());</span>
+<span class="fc" id="L195">                log.info(&quot;    Flagged for Review: {}&quot;, s.getFilterCount());</span>
+<span class="fc" id="L196">                log.info(&quot;    Errors            : {}&quot;, s.getSkipCount());</span>
+<span class="fc" id="L197">                log.info(THIN);</span>
+<span class="fc" id="L198">            }</span>
+        }
+
+<span class="fc" id="L201">        log.info(&quot;  TOTALS&quot;);</span>
+<span class="fc" id="L202">        log.info(THIN);</span>
+<span class="fc" id="L203">        log.info(&quot;  Records Received  : {}&quot;, stats.getTotalReadCount());</span>
+<span class="fc" id="L204">        log.info(&quot;  Successfully Saved: {}&quot;, stats.getTotalWriteCount());</span>
+<span class="fc" id="L205">        log.info(&quot;  Flagged for Review: {}&quot;, stats.getTotalFilterCount());</span>
+<span class="fc" id="L206">        log.info(&quot;  Errors            : {}&quot;, stats.getTotalSkipCount());</span>
+<span class="fc" id="L207">        log.info(LINE);</span>
+
+<span class="fc bfc" id="L209" title="All 2 branches covered.">        if (!stats.getErrors().isEmpty()) {</span>
+<span class="fc" id="L210">            log.warn(&quot;  TOP ISSUES&quot;);</span>
+<span class="fc" id="L211">            log.warn(THIN);</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">            for (String err : stats.getErrors()) {</span>
+<span class="fc" id="L213">                log.warn(&quot;  &gt; {}&quot;, err);</span>
+<span class="fc" id="L214">            }</span>
+<span class="fc" id="L215">            log.warn(LINE);</span>
+        }
+<span class="fc" id="L217">    }</span>
+
+    // ---------------------------------------------------------------
+    // Email dispatch
+    // ---------------------------------------------------------------
+
+    private void sendEmail(JobStatistics stats) {
+<span class="fc bfc" id="L224" title="All 2 branches covered.">        if (!emailEnabled) {</span>
+<span class="fc" id="L225">            log.info(&quot;Email reporting is disabled (batch.email.enabled=false) — skipping.&quot;);</span>
+<span class="fc" id="L226">            return;</span>
+        }
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">        if (emailNotificationService == null) {</span>
+<span class="fc" id="L229">            log.info(&quot;No EmailNotificationService configured — skipping email report.&quot;);</span>
+<span class="fc" id="L230">            return;</span>
+        }
+<span class="nc bnc" id="L232" title="All 4 branches missed.">        if (reportToEmail == null || reportToEmail.isBlank()) {</span>
+<span class="nc" id="L233">            log.warn(&quot;reportToEmail not configured — skipping email report.&quot;);</span>
+<span class="nc" id="L234">            return;</span>
+        }
+        try {
+<span class="nc" id="L237">            log.info(&quot;Sending statistics email to: {}&quot;, reportToEmail);</span>
+<span class="nc" id="L238">            emailNotificationService.sendJobReport(stats, reportToEmail);</span>
+<span class="nc" id="L239">            log.info(&quot;Statistics email sent successfully.&quot;);</span>
+<span class="nc" id="L240">        } catch (Exception ex) {</span>
+            // A failed email must NEVER fail the job itself
+<span class="nc" id="L242">            log.error(&quot;Failed to send statistics email for '{}': {}&quot;,</span>
+<span class="nc" id="L243">                      stats.getJobName(), ex.getMessage(), ex);</span>
+<span class="nc" id="L244">        }</span>
+<span class="nc" id="L245">    }</span>
+
+    // ---------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------
+
+    /** Converts batch exit codes to plain business language for the log. */
+    private static String friendlyStatus(String exitCode) {
+<span class="fc bfc" id="L253" title="All 3 branches covered.">        return switch (exitCode) {</span>
+<span class="fc" id="L254">            case &quot;COMPLETED&quot; -&gt; &quot;Completed Successfully&quot;;</span>
+<span class="fc" id="L255">            case &quot;FAILED&quot;    -&gt; &quot;Completed with Errors&quot;;</span>
+<span class="fc" id="L256">            default          -&gt; exitCode;</span>
+        };
+    }
+
+    private Date toDate(LocalDateTime ldt) {
+<span class="pc bpc" id="L261" title="1 of 2 branches missed.">        if (ldt == null) return new Date();</span>
+<span class="fc" id="L262">        return Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());</span>
+    }
+
+    // ---------------------------------------------------------------
+    // Setters — called by Spring XML &lt;property&gt; injection
+    // ---------------------------------------------------------------
+
+    public void setEmailNotificationService(EmailNotificationService svc) {
+<span class="fc" id="L270">        this.emailNotificationService = svc;</span>
+<span class="fc" id="L271">    }</span>
+
+    public void setReportToEmail(String reportToEmail) {
+<span class="fc" id="L274">        this.reportToEmail = reportToEmail;</span>
+<span class="fc" id="L275">    }</span>
+
+    public void setEmailEnabled(boolean emailEnabled) {
+<span class="fc" id="L278">        this.emailEnabled = emailEnabled;</span>
+<span class="fc" id="L279">    }</span>
+
+    public void setJobRunStatsRepository(JobRunStatsRepository jobRunStatsRepository) {
+<span class="fc" id="L282">        this.jobRunStatsRepository = jobRunStatsRepository;</span>
+<span class="fc" id="L283">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
