@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  deploy.xml — Maven Assembly descriptor
+  =======================================
+  Produces a deployment TAR.GZ containing:
+
+    spring-batch-framework-{version}/
+      batch.jar          ← shaded fat JAR (all deps bundled)
+      scripts/
+        run-batch.sh     ← generic launcher
+        *-job.sh         ← one per job slug
+        validate-config.sh
+
+  Produced during  mvn package  as:
+    target/spring-batch-framework-{version}-deploy.tar.gz
+
+  Deployment:
+    tar -xzf spring-batch-framework-*-deploy.tar.gz -C /opt/batch
+    /opt/batch/spring-batch-framework-{version}/scripts/invoice-job.sh batchDate=2026-01-15
+
+  run-batch.sh auto-detects APP_HOME as the parent of the scripts/ directory,
+  so batch.jar is found automatically without any env-var configuration.
+-->
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0
+              https://maven.apache.org/xsd/assembly-2.2.0.xsd">
+
+    <id>deploy</id>
+
+    <formats>
+        <format>tar.gz</format>
+    </formats>
+
+    <!--
+      includeBaseDirectory=true wraps everything in a top-level directory:
+        spring-batch-framework-{version}/
+      This prevents files from being scattered directly into the extract target.
+    -->
+    <includeBaseDirectory>true</includeBaseDirectory>
+
+    <!-- ================================================================
+         Fat JAR — placed at the deployment root as "batch.jar".
+         The shade plugin has already replaced the project artifact with the
+         shaded JAR by the time the assembly plugin runs (same phase, ordered
+         after shade in pom.xml).
+         ================================================================ -->
+    <files>
+        <file>
+            <source>${project.build.directory}/${project.build.finalName}.jar</source>
+            <destName>batch.jar</destName>
+            <outputDirectory>/</outputDirectory>
+        </file>
+    </files>
+
+    <!-- ================================================================
+         Shell scripts — placed in scripts/ sub-directory, executable.
+         run-batch.sh defaults APP_HOME to dirname(SCRIPT_DIR), i.e. the
+         deployment root where batch.jar lives.
+         ================================================================ -->
+    <fileSets>
+        <fileSet>
+            <directory>src/main/scripts</directory>
+            <outputDirectory>scripts</outputDirectory>
+            <!-- 0755: owner rwx, group r-x, other r-x -->
+            <fileMode>0755</fileMode>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+
+</assembly>

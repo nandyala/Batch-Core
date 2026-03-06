@@ -31,7 +31,7 @@ class StepErrorCollectorTest {
 
         JobInstance jobInstance = new JobInstance(1L, "testJob");
         JobExecution jobExecution = new JobExecution(1L, jobInstance, new JobParameters());
-        stepExecution = new StepExecution("testStep", jobExecution);
+        stepExecution = new StepExecution(1L, "testStep", jobExecution);
 
         // Wire the step execution into the collector (mimics beforeStep callback)
         collector.beforeStep(stepExecution);

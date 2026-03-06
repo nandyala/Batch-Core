@@ -65,7 +65,7 @@ class StatisticsAndEmailTaskletTest {
         jobExecution.setStartTime(LocalDateTime.now());  // exercises toDate(non-null) path
 
         // Business step with some counts
-        StepExecution businessStep = new StepExecution("processStep", jobExecution);
+        StepExecution businessStep = new StepExecution(1L, "processStep", jobExecution);
         businessStep.setReadCount(100);
         businessStep.setWriteCount(95);
         businessStep.setFilterCount(2);
@@ -78,7 +78,7 @@ class StatisticsAndEmailTaskletTest {
         jobExecution.addStepExecutions(java.util.List.of(businessStep));
 
         // The stats tasklet runs as a separate step
-        statsStep = new StepExecution("statisticsAndEmailStep", jobExecution);
+        statsStep = new StepExecution(2L, "statisticsAndEmailStep", jobExecution);
         jobExecution.addStepExecutions(java.util.List.of(statsStep));
 
         // Wire mocks: ChunkContext → StepContext → StepExecution
@@ -162,7 +162,7 @@ class StatisticsAndEmailTaskletTest {
     void execute_withStepErrors_logsTopIssues() throws Exception {
         // Add a step whose ExecutionContext carries collected error messages
         // (as StepErrorCollector would populate them during a real run)
-        StepExecution errorStep = new StepExecution("errorStep", jobExecution);
+        StepExecution errorStep = new StepExecution(3L, "errorStep", jobExecution);
         errorStep.setExitStatus(ExitStatus.COMPLETED);
         errorStep.getExecutionContext().put(
                 StepErrorCollector.ERRORS_KEY,
@@ -178,7 +178,7 @@ class StatisticsAndEmailTaskletTest {
     void execute_withFailedStep_computedStatusFailed() throws Exception {
         // A step with ExitStatus.FAILED triggers the "FAILED" branch in friendlyStatus()
         // and causes getComputedStatus() to return "FAILED"
-        StepExecution failedStep = new StepExecution("failedStep", jobExecution);
+        StepExecution failedStep = new StepExecution(4L, "failedStep", jobExecution);
         failedStep.setExitStatus(ExitStatus.FAILED);
         jobExecution.addStepExecutions(List.of(failedStep));
 
@@ -203,7 +203,7 @@ class StatisticsAndEmailTaskletTest {
     void execute_stepWithUnknownExitCode_friendlyStatusUsesRawCode() throws Exception {
         // ExitStatus "STOPPED" hits the default branch in friendlyStatus()
         // (neither "COMPLETED" nor "FAILED")
-        StepExecution stoppedStep = new StepExecution("stoppedStep", jobExecution);
+        StepExecution stoppedStep = new StepExecution(5L, "stoppedStep", jobExecution);
         stoppedStep.setExitStatus(new ExitStatus("STOPPED"));
         jobExecution.addStepExecutions(List.of(stoppedStep));
 
@@ -221,7 +221,7 @@ class StatisticsAndEmailTaskletTest {
         jobExec2.setStatus(BatchStatus.STARTED);
         jobExec2.setStartTime(LocalDateTime.now());
 
-        StepExecution statsOnly = new StepExecution("statisticsAndEmailStep", jobExec2);
+        StepExecution statsOnly = new StepExecution(1L, "statisticsAndEmailStep", jobExec2);
         jobExec2.addStepExecutions(List.of(statsOnly));
 
         when(stepContext.getStepExecution()).thenReturn(statsOnly);

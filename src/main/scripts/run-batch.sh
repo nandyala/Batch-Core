@@ -32,7 +32,10 @@ set -euo pipefail
 
 # ── Resolve directories ───────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_HOME="${APP_HOME:-$SCRIPT_DIR}"
+# In the standard deployment layout the scripts live in a scripts/ sub-directory
+# and batch.jar lives one level up (the deployment root).
+# Override APP_HOME to point elsewhere if your layout differs.
+APP_HOME="${APP_HOME:-$(dirname "$SCRIPT_DIR")}"
 APP_JAR="${APP_JAR:-batch.jar}"
 JVM_OPTS="${JVM_OPTS:--Xms256m -Xmx512m}"
 

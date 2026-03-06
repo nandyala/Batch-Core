@@ -42,6 +42,7 @@
         <maven.shade.version>3.6.2</maven.shade.version>
         <maven.surefire.version>3.5.5</maven.surefire.version>
         <jacoco.version>0.8.14</jacoco.version>
+        <maven.assembly.version>3.7.1</maven.assembly.version>
 
         <!-- Test library versions -->
         <mockito.version>5.22.0</mockito.version>
@@ -219,6 +220,29 @@
                                     <resource>META-INF/spring.schemas</resource>
                                 </transformer>
                             </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Deployment TAR — fat JAR + scripts/ bundled for server deployment.
+                 Must be declared AFTER maven-shade-plugin so the shaded JAR
+                 exists when the assembly plugin runs (same package phase,
+                 execution order follows declaration order in pom.xml).
+                 Output: target/${project.finalName}-deploy.tar.gz            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>${maven.assembly.version}</version>
+                <executions>
+                    <execution>
+                        <id>deploy-tar</id>
+                        <phase>package</phase>
+                        <goals><goal>single</goal></goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/deploy.xml</descriptor>
+                            </descriptors>
                         </configuration>
                     </execution>
                 </executions>

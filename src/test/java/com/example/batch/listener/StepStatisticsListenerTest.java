@@ -22,7 +22,7 @@ class StepStatisticsListenerTest {
     private StepExecution buildStepExecution(String stepName) {
         JobInstance instance = new JobInstance(1L, "testJob");
         JobExecution jobExec  = new JobExecution(1L, instance, new JobParameters());
-        return new StepExecution(stepName, jobExec);
+        return new StepExecution(1L, stepName, jobExec);
     }
 
     @Test
