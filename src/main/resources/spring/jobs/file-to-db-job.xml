@@ -65,7 +65,8 @@
         <!-- Skip the CSV header row -->
         <property name="linesToSkip" value="1"/>
 
-        <property name="lineMapper">
+        <!-- SB6: no-arg constructor removed — lineMapper is now a required constructor argument -->
+        <constructor-arg name="lineMapper">
             <bean class="org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper">
 
                 <property name="lineTokenizer">
@@ -82,7 +83,7 @@
                 </property>
 
             </bean>
-        </property>
+        </constructor-arg>
     </bean>
 
     <!-- ================================================================

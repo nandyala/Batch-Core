@@ -154,23 +154,38 @@
     <bean id="partitionedCustomerReportWriter"
           class="org.springframework.batch.infrastructure.item.file.FlatFileItemWriter"
           scope="step">
-        <constructor-arg
+        <!--
+          SB6: no-arg constructor removed — lineAggregator is the single required
+          constructor argument. resource and other options remain as properties.
+          BeanWrapperFieldExtractor also lost its no-arg constructor — field
+          names are passed via constructor-arg (varargs → <list>).
+        -->
+        <constructor-arg name="lineAggregator">
+            <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator">
+                <property name="delimiter" value=","/>
+                <property name="fieldExtractor">
+                    <bean class="org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor">
+                        <!-- SB6: names is a varargs constructor-arg — must use <list>, not a comma-string -->
+                        <constructor-arg name="names">
+                            <list>
+                                <value>customerId</value>
+                                <value>customerName</value>
+                                <value>region</value>
+                                <value>totalOrders</value>
+                                <value>totalAmount</value>
+                                <value>reportDate</value>
+                            </list>
+                        </constructor-arg>
+                    </bean>
+                </property>
+            </bean>
+        </constructor-arg>
+        <property name="resource"
                   value="file:${batch.partitioned.outputDir}/partitioned-customer-report-#{jobParameters['batchDate']}-p#{stepExecutionContext['partitionNumber']}.csv"/>
         <property name="shouldDeleteIfExists" value="true"/>
         <property name="headerCallback">
             <bean class="com.example.batch.dbtofile.CustomerReportHeaderCallback"/>
         </property>
-        <constructor-arg>
-            <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator">
-                <property name="delimiter" value=","/>
-                <property name="fieldExtractor">
-                    <bean class="org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor">
-                        <constructor-arg
-                                  value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
-                    </bean>
-                </property>
-            </bean>
-        </constructor-arg>
     </bean>
 
     <!-- ================================================================

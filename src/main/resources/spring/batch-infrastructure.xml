@@ -7,7 +7,7 @@
     - HikariCP secondaryDataSource (MSSQL — reporting / secondary business DB)
     - DataSourceTransactionManager per datasource
     - JobRepository        (persists batch metadata — uses primaryDataSource)
-    - JobLauncher          (synchronous)
+    - JobOperator          (synchronous — SB6 replacement for JobLauncher)
     - JobExplorer          (read-only execution history)
     - Auto-creates BATCH_* schema on first run
 
@@ -170,12 +170,21 @@
             max-varchar-length="1000"/>
 
     <!-- ================================================================
-         Job Launcher — synchronous (blocks until job finishes)
+         Job Registry — auto-discovers Job beans in the application context.
+         Required by TaskExecutorJobOperator (via SimpleJobOperator parent).
+         ================================================================ -->
+    <bean id="jobRegistry"
+          class="org.springframework.batch.core.configuration.support.MapJobRegistry"/>
+
+    <!-- ================================================================
+         Job Operator — SB6 replacement for the deprecated JobLauncher.
+         Synchronous (blocks until job finishes).
          Swap SyncTaskExecutor for ThreadPoolTaskExecutor for async runs.
          ================================================================ -->
-    <bean id="jobLauncher"
-          class="org.springframework.batch.core.launch.support.TaskExecutorJobLauncher">
+    <bean id="jobOperator"
+          class="org.springframework.batch.core.launch.support.TaskExecutorJobOperator">
         <property name="jobRepository" ref="jobRepository"/>
+        <property name="jobRegistry"   ref="jobRegistry"/>
         <property name="taskExecutor">
             <bean class="org.springframework.core.task.SyncTaskExecutor"/>
         </property>

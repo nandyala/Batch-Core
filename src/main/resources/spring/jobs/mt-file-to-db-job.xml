@@ -69,15 +69,8 @@
     <bean id="mtTransactionFileReader"
           class="org.springframework.batch.infrastructure.item.file.FlatFileItemReader"
           scope="step">
-        <constructor-arg
-                  value="file:#{jobParameters['inputFile'] ?: '${batch.filetodb.inputDir}/' + jobParameters['batchDate'] + '/transactions.csv'}"/>
-        <property name="linesToSkip" value="1"/>
-        <!--
-          saveState=false because in a multi-threaded step the reader's
-          position is meaningless for restart — see class-level comment.
-        -->
-        <property name="saveState" value="false"/>
-        <constructor-arg>
+        <!-- SB6: no-arg constructor removed — lineMapper is now a required constructor argument -->
+        <constructor-arg name="lineMapper">
             <bean class="org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper">
                 <property name="lineTokenizer">
                     <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer">
@@ -91,6 +84,14 @@
                 </property>
             </bean>
         </constructor-arg>
+        <property name="resource"
+                  value="file:#{jobParameters['inputFile'] ?: '${batch.filetodb.inputDir}/' + jobParameters['batchDate'] + '/transactions.csv'}"/>
+        <property name="linesToSkip" value="1"/>
+        <!--
+          saveState=false because in a multi-threaded step the reader's
+          position is meaningless for restart — see class-level comment.
+        -->
+        <property name="saveState" value="false"/>
     </bean>
 
     <!-- ================================================================

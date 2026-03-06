@@ -9,7 +9,7 @@ import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
 import org.springframework.batch.core.job.AbstractJob;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.MapPropertySource;
@@ -197,12 +197,12 @@ public class SpringBatchApplication {
                     return executeDryRun(job, beanName, xmlPath, cliParams, correlationId, configHash);
                 }
 
-                JobLauncher launcher = ctx.getBean("jobLauncher", JobLauncher.class);
+                JobOperator operator = ctx.getBean("jobOperator", JobOperator.class);
 
                 JobParameters params = buildJobParameters(cliParams, correlationId, configHash);
                 log.info("Launching '{}' with params: {}", beanName, params);
 
-                JobExecution exec = launcher.run(job, params);
+                JobExecution exec = operator.start(job, params);
                 log.info("Finished '{}' — status={} exit={} correlationId={}",
                          beanName, exec.getStatus(), exec.getExitStatus().getExitCode(),
                          correlationId);

@@ -79,10 +79,11 @@
           scope="step">
         <!-- TODO: set resource, lineMapper, linesToSkip, etc. -->
         <!--
-        <property name="resource"    value="file:${batch.template.inputDir}/input.csv"/>
-        <property name="linesToSkip" value="1"/>
-        <property name="saveState"   value="false"/>   ← required for multi-threaded steps
-        <property name="lineMapper">
+          SB6: no-arg constructor removed — lineMapper is now a required constructor argument.
+          resource, linesToSkip, saveState, etc. remain as <property> setters.
+        -->
+        <!--
+        <constructor-arg name="lineMapper">
             <bean class="org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper">
                 <property name="lineTokenizer">
                     <bean class="org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer">
@@ -94,7 +95,10 @@
                     <bean class="com.example.batch.yourpackage.YourFieldSetMapper"/>
                 </property>
             </bean>
-        </property>
+        </constructor-arg>
+        <property name="resource"    value="file:${batch.template.inputDir}/input.csv"/>
+        <property name="linesToSkip" value="1"/>
+        <property name="saveState"   value="false"/>
         -->
     </bean>
 
@@ -220,16 +224,20 @@
 
     -->
     <!--
+      SB6: SynchronizedItemStreamReader and SynchronizedItemStreamWriter lost their no-arg
+      constructors — delegate is now a required constructor argument.
+    -->
+    <!--
     <bean id="templateSyncReader"
           class="org.springframework.batch.infrastructure.item.support.SynchronizedItemStreamReader"
           scope="step">
-        <property name="delegate" ref="templateItemReader"/>
+        <constructor-arg name="delegate" ref="templateItemReader"/>
     </bean>
 
     <bean id="templateSyncWriter"
           class="org.springframework.batch.infrastructure.item.support.SynchronizedItemStreamWriter"
           scope="step">
-        <property name="delegate" ref="templateItemWriter"/>
+        <constructor-arg name="delegate" ref="templateItemWriter"/>
     </bean>
 
     <bean id="templateTaskExecutor" parent="abstractStepTaskExecutor">

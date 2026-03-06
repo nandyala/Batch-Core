@@ -133,8 +133,17 @@
                 <property name="delimiter" value=","/>
                 <property name="fieldExtractor">
                     <bean class="org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor">
-                        <constructor-arg
-                                  value="customerId,customerName,region,totalOrders,totalAmount,reportDate"/>
+                        <!-- SB6: names is a varargs constructor-arg — must use <list>, not a comma-string -->
+                        <constructor-arg name="names">
+                            <list>
+                                <value>customerId</value>
+                                <value>customerName</value>
+                                <value>region</value>
+                                <value>totalOrders</value>
+                                <value>totalAmount</value>
+                                <value>reportDate</value>
+                            </list>
+                        </constructor-arg>
                     </bean>
                 </property>
             </bean>
